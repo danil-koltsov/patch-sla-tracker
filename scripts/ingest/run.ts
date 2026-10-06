@@ -13,6 +13,7 @@ import { parseAdvisory, type Advisory } from "./apple-advisory.ts";
 import { parseIndex, type IndexRow } from "./apple-index.ts";
 import { parseReleaseName } from "./apple-names.ts";
 import { buildDataset } from "./build.ts";
+import { allTimelines, buildIndex } from "../../lib/metrics.ts";
 import { cachedGet, DAY, HOUR } from "./http.ts";
 import { fetchKev } from "./kev.ts";
 import { fetchAppleCna, fetchMissing } from "./nvd.ts";
@@ -69,9 +70,12 @@ async function main() {
   // 4. Build, then NVD for the CVEs we actually list
   const draft = buildDataset({ rows: osRows, advisories, kev: kev.entries, kevCatalogVersion: kev.catalogVersion, nvdPublished: new Map(), updatedAt });
   const nvd = await fetchAppleCna(log);
-  const needed = draft.dataset.cves.map((c) => c.id).filter((id) => !nvd.has(id));
-  log(`nvd: ${needed.length} CVEs from other CNAs need single lookups`);
-  for (const [k, v] of await fetchMissing(needed, log)) nvd.set(k, v);
+  // Only CVEs inside the metric window need a date; older ones are shown for reference only.
+  const inWindow = new Set(allTimelines(buildIndex(draft.dataset)).filter((t) => t.inWindow).map((t) => t.id));
+  const needed = draft.dataset.cves.map((c) => c.id).filter((id) => !nvd.has(id) && inWindow.has(id));
+  log(`nvd: ${needed.length} in-window CVEs from other CNAs need single lookups`);
+  const missing = await fetchMissing(needed, log);
+  for (const [k, v] of missing.published) nvd.set(k, v);
 
   const { dataset, warnings } = buildDataset({ rows: osRows, advisories, kev: kev.entries, kevCatalogVersion: kev.catalogVersion, nvdPublished: nvd, updatedAt });
   const counts = {
@@ -81,6 +85,7 @@ async function main() {
     release_cves: dataset.releaseCves.length,
   };
   log(`dataset: ${JSON.stringify(counts)}`);
+  if (missing.failed.length) warnings.push(`NVD lookup failed (published date unknown) for ${missing.failed.length} CVEs: ${missing.failed.join(", ")}`);
   for (const w of warnings) log(`warning: ${w}`);
 
   if (args.out) {

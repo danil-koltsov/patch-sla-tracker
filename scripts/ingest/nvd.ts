@@ -36,20 +36,30 @@ export async function fetchAppleCna(log: (s: string) => void): Promise<Map<strin
   return all;
 }
 
-/** Single-CVE lookups for CVEs from other CNAs. Found records are cached 30 days, misses 7 days. */
-export async function fetchMissing(ids: string[], log: (s: string) => void): Promise<Map<string, string | null>> {
-  const out = new Map<string, string | null>();
+/**
+ * Single-CVE lookups for CVEs from other CNAs. Found records are cached 30 days, misses 7 days.
+ * A lookup that keeps failing yields null ("unknown") and is reported, instead of aborting the run.
+ */
+export async function fetchMissing(ids: string[], log: (s: string) => void): Promise<{ published: Map<string, string | null>; failed: string[] }> {
+  const published = new Map<string, string | null>();
+  const failed: string[] = [];
   let i = 0;
   for (const id of ids) {
     i++;
-    let res = await cachedGet(`${API}?cveId=${id}`, options(30 * DAY));
-    let parsed = res.status === 404 ? { published: new Map<string, string | null>() } : parseNvdPage(res.body);
-    if (!parsed.published.get(id) && Date.now() - Date.parse(res.fetchedAt) > 7 * DAY) {
-      res = await cachedGet(`${API}?cveId=${id}`, options(0));
-      parsed = res.status === 404 ? { published: new Map() } : parseNvdPage(res.body);
+    try {
+      let res = await cachedGet(`${API}?cveId=${id}`, options(30 * DAY));
+      let parsed = res.status === 404 ? { published: new Map<string, string | null>() } : parseNvdPage(res.body);
+      if (!parsed.published.get(id) && Date.now() - Date.parse(res.fetchedAt) > 7 * DAY) {
+        res = await cachedGet(`${API}?cveId=${id}`, options(0));
+        parsed = res.status === 404 ? { published: new Map() } : parseNvdPage(res.body);
+      }
+      published.set(id, parsed.published.get(id) ?? null);
+      if (!res.fromCache && i % 25 === 0) log(`nvd: single lookups ${i}/${ids.length}`);
+    } catch (e) {
+      failed.push(id);
+      published.set(id, null);
+      log(`nvd: ${id} lookup failed, recorded as unknown (${String(e).slice(0, 120)})`);
     }
-    out.set(id, parsed.published.get(id) ?? null);
-    if (!res.fromCache && i % 25 === 0) log(`nvd: single lookups ${i}/${ids.length}`);
   }
-  return out;
+  return { published, failed };
 }
