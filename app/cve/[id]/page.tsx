@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DateOrUnknown, Def, Exports, relative, TableScroll, Unknown } from "../../../components/bits.tsx";
 import { CveTimelineSvg } from "../../../components/CveTimelineSvg.tsx";
-import { loadData, REVALIDATE_SECONDS } from "../../../lib/data.ts";
+import { loadData } from "../../../lib/data.ts";
 import { TERMS, WINDOW_START } from "../../../lib/methodology.ts";
 import { cveTimeline, type BranchStatus } from "../../../lib/metrics.ts";
 
-export const revalidate = REVALIDATE_SECONDS;
+export const revalidate = 86400; // must be a literal; equals REVALIDATE_SECONDS
 export const dynamicParams = true;
 
 const CVE_ID = /^CVE-\d{4}-\d{4,}$/;

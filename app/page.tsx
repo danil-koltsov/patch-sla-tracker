@@ -1,10 +1,10 @@
 import { CveLink, DataError, Def, Days } from "../components/bits.tsx";
-import { loadData, REVALIDATE_SECONDS } from "../lib/data.ts";
+import { loadData } from "../lib/data.ts";
 import { TERMS, WINDOW_START } from "../lib/methodology.ts";
 import { backportSummary, disclosureSummary, exploitedSummary } from "../lib/metrics.ts";
 import { formatDays } from "../lib/stats.ts";
 
-export const revalidate = REVALIDATE_SECONDS;
+export const revalidate = 86400; // must be a literal; equals REVALIDATE_SECONDS
 
 export default async function Home() {
   let data;

@@ -1,0 +1,215 @@
+{
+ "meta": {
+  "updatedAt": "2026-10-06T00:00:00Z",
+  "kevCatalogVersion": "test"
+ },
+ "branches": [
+  {
+   "id": "ios-16",
+   "platform": "iOS",
+   "major": 16,
+   "name": "iOS 16"
+  },
+  {
+   "id": "ios-17",
+   "platform": "iOS",
+   "major": 17,
+   "name": "iOS 17"
+  },
+  {
+   "id": "ipados-17",
+   "platform": "iPadOS",
+   "major": 17,
+   "name": "iPadOS 17"
+  },
+  {
+   "id": "macos-14",
+   "platform": "macOS",
+   "major": 14,
+   "name": "macOS 14 Sonoma"
+  }
+ ],
+ "releases": [
+  {
+   "id": "ios-16:16.0",
+   "branchId": "ios-16",
+   "version": "16.0",
+   "suffix": null,
+   "kind": "full",
+   "releaseDate": "2022-09-12",
+   "rereleaseDates": [],
+   "name": "iOS 16.0",
+   "advisoryUrl": "https://support.apple.com/en-us/ios-16:16.0",
+   "hasCveEntries": true
+  },
+  {
+   "id": "ios-17:17.0",
+   "branchId": "ios-17",
+   "version": "17.0",
+   "suffix": null,
+   "kind": "full",
+   "releaseDate": "2023-09-18",
+   "rereleaseDates": [],
+   "name": "iOS 17.0",
+   "advisoryUrl": "https://support.apple.com/en-us/ios-17:17.0",
+   "hasCveEntries": true
+  },
+  {
+   "id": "ios-17:17.1",
+   "branchId": "ios-17",
+   "version": "17.1",
+   "suffix": null,
+   "kind": "full",
+   "releaseDate": "2023-10-25",
+   "rereleaseDates": [],
+   "name": "iOS 17.1",
+   "advisoryUrl": "https://support.apple.com/en-us/ios-17:17.1",
+   "hasCveEntries": true
+  },
+  {
+   "id": "ios-16:16.7.2",
+   "branchId": "ios-16",
+   "version": "16.7.2",
+   "suffix": null,
+   "kind": "full",
+   "releaseDate": "2023-11-07",
+   "rereleaseDates": [],
+   "name": "iOS 16.7.2",
+   "advisoryUrl": "https://support.apple.com/en-us/ios-16:16.7.2",
+   "hasCveEntries": true
+  },
+  {
+   "id": "ios-16:16.5.1(a)",
+   "branchId": "ios-16",
+   "version": "16.5.1",
+   "suffix": "(a)",
+   "kind": "rsr",
+   "releaseDate": "2023-07-10",
+   "rereleaseDates": [],
+   "name": "iOS 16.5.1 (a)",
+   "advisoryUrl": "https://support.apple.com/en-us/ios-16:16.5.1(a)",
+   "hasCveEntries": true
+  },
+  {
+   "id": "ios-17:17.2",
+   "branchId": "ios-17",
+   "version": "17.2",
+   "suffix": null,
+   "kind": "full",
+   "releaseDate": "2023-12-11",
+   "rereleaseDates": [],
+   "name": "iOS 17.2",
+   "advisoryUrl": "https://support.apple.com/en-us/ios-17:17.2",
+   "hasCveEntries": true
+  },
+  {
+   "id": "ipados-17:17.1",
+   "branchId": "ipados-17",
+   "version": "17.1",
+   "suffix": null,
+   "kind": "full",
+   "releaseDate": "2023-10-25",
+   "rereleaseDates": [],
+   "name": "iPadOS 17.1",
+   "advisoryUrl": "https://support.apple.com/en-us/ipados-17:17.1",
+   "hasCveEntries": true
+  },
+  {
+   "id": "macos-14:14.1",
+   "branchId": "macos-14",
+   "version": "14.1",
+   "suffix": null,
+   "kind": "full",
+   "releaseDate": "2023-10-25",
+   "rereleaseDates": [],
+   "name": "macOS 14.1",
+   "advisoryUrl": "https://support.apple.com/en-us/macos-14:14.1",
+   "hasCveEntries": true
+  }
+ ],
+ "releaseCves": [
+  {
+   "releaseId": "ios-16:16.0",
+   "cveId": "CVE-2022-0001",
+   "entryAdded": null,
+   "entryUpdated": null,
+   "exploitedNote": false
+  },
+  {
+   "releaseId": "ios-17:17.0",
+   "cveId": "CVE-2023-0001",
+   "entryAdded": null,
+   "entryUpdated": null,
+   "exploitedNote": false
+  },
+  {
+   "releaseId": "ios-17:17.1",
+   "cveId": "CVE-2023-1000",
+   "entryAdded": null,
+   "entryUpdated": null,
+   "exploitedNote": true
+  },
+  {
+   "releaseId": "ios-17:17.1",
+   "cveId": "CVE-2023-1001",
+   "entryAdded": null,
+   "entryUpdated": null,
+   "exploitedNote": false
+  },
+  {
+   "releaseId": "ios-16:16.7.2",
+   "cveId": "CVE-2023-1000",
+   "entryAdded": null,
+   "entryUpdated": null,
+   "exploitedNote": true
+  },
+  {
+   "releaseId": "ios-16:16.5.1(a)",
+   "cveId": "CVE-2023-37450",
+   "entryAdded": null,
+   "entryUpdated": null,
+   "exploitedNote": true
+  },
+  {
+   "releaseId": "ios-17:17.2",
+   "cveId": "CVE-2024-0100",
+   "entryAdded": "2024-05-13",
+   "entryUpdated": null,
+   "exploitedNote": false
+  },
+  {
+   "releaseId": "ipados-17:17.1",
+   "cveId": "CVE-2023-1000",
+   "entryAdded": null,
+   "entryUpdated": null,
+   "exploitedNote": true
+  },
+  {
+   "releaseId": "macos-14:14.1",
+   "cveId": "CVE-2023-1001",
+   "entryAdded": null,
+   "entryUpdated": null,
+   "exploitedNote": false
+  }
+ ],
+ "cves": [
+  {
+   "id": "CVE-2023-1000",
+   "nvdPublished": "2023-10-25",
+   "kevDateAdded": "2023-10-26",
+   "kevDueDate": "2023-11-16"
+  },
+  {
+   "id": "CVE-2023-37450",
+   "nvdPublished": "2023-07-27",
+   "kevDateAdded": "2023-07-13",
+   "kevDueDate": null
+  },
+  {
+   "id": "CVE-2024-0100",
+   "nvdPublished": "2024-05-14",
+   "kevDateAdded": null,
+   "kevDueDate": null
+  }
+ ]
+}

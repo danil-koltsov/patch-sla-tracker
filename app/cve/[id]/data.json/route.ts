@@ -1,8 +1,13 @@
-import { loadData, REVALIDATE_SECONDS } from "../../../../lib/data.ts";
+import { loadData } from "../../../../lib/data.ts";
 import { exportEnvelope, exportRows } from "../../../../lib/export.ts";
 import { cveTimeline } from "../../../../lib/metrics.ts";
 
-export const revalidate = REVALIDATE_SECONDS;
+export const revalidate = 86400; // must be a literal; equals REVALIDATE_SECONDS
+
+/** Rendered on first request, then cached like the page (ISR). */
+export async function generateStaticParams() {
+  return [];
+}
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const id = decodeURIComponent((await params).id).toUpperCase();

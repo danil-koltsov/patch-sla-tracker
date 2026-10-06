@@ -1,9 +1,9 @@
-import { loadData, REVALIDATE_SECONDS } from "../../../lib/data.ts";
+import { loadData } from "../../../lib/data.ts";
 import { exportEnvelope, exportRows } from "../../../lib/export.ts";
 import { backportSummary, disclosureSummary, exploitedSummary } from "../../../lib/metrics.ts";
 import { PLATFORMS } from "../../../lib/types.ts";
 
-export const revalidate = REVALIDATE_SECONDS;
+export const revalidate = 86400; // must be a literal; equals REVALIDATE_SECONDS
 
 export async function GET() {
   const { dataset, timelines } = await loadData();

@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { CveLink, DataError, DateOrUnknown, Def, Exports, relative, TableScroll, Unknown } from "../../components/bits.tsx";
 import { GapStrip } from "../../components/GapStrip.tsx";
-import { loadData, REVALIDATE_SECONDS } from "../../lib/data.ts";
+import { loadData } from "../../lib/data.ts";
 import { TERMS, WINDOW_START } from "../../lib/methodology.ts";
 import { backportSummary, disclosureSummary, exploitedSummary, type CveTimeline, type Stat } from "../../lib/metrics.ts";
 import { formatDays } from "../../lib/stats.ts";
 import { PLATFORMS } from "../../lib/types.ts";
 
-export const revalidate = REVALIDATE_SECONDS;
+export const revalidate = 86400; // must be a literal; equals REVALIDATE_SECONDS
 export const metadata: Metadata = {
   title: "Apple",
   description: "Backport gaps between Apple OS branches, exploited-vulnerability timelines, and NVD disclosure lag for iOS, iPadOS and macOS.",
