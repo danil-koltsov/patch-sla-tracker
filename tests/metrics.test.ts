@@ -190,3 +190,14 @@ describe("export", async () => {
     expect(line).toContain(",,"); // null KEV date
   });
 });
+
+describe("edge case: recent fix, branch whose next update is not due yet", () => {
+  it("is 'no-fix-listed', not 'branch-ended', when the branch released recently", () => {
+    const f = base();
+    f.release("iOS", "17.6", "2026-09-14", ["CVE-2026-0001"]);
+    f.release("iOS", "18.0", "2026-09-14", ["CVE-2026-0001"]);
+    f.release("iOS", "18.0.1", "2026-09-28", []); // no published CVE entries
+    f.release("iOS", "17.6.1", "2026-09-28", ["CVE-2026-0002"]); // asOf is 2026-10-06
+    expect(outcome(f, "CVE-2026-0002", "ios-18")!.status).toEqual({ kind: "no-fix-listed" });
+  });
+});

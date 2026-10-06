@@ -103,7 +103,10 @@ export default function Methodology() {
           the CVE page and counted under disclosure lag.
         </li>
         <li>Missing NVD or KEV dates are shown as &ldquo;unknown&rdquo; and left out of medians, never estimated.</li>
-        <li>A branch with no security release after the earliest fix is &ldquo;branch ended&rdquo;, not &ldquo;no fix listed&rdquo;.</li>
+        <li>
+          A branch with no update after the earliest fix is &ldquo;branch ended&rdquo;, not &ldquo;no fix listed&rdquo;, unless its last update is
+          under 180 days old: then its next update may simply not be due yet, and it stays &ldquo;no fix listed&rdquo; as of the data date.
+        </li>
         <li>An older branch fixed before the newest one: the older branch sets the earliest fix date and the newest branch gets the gap.</li>
       </ul>
 

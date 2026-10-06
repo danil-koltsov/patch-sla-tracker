@@ -4,15 +4,17 @@
  */
 import type { Branch, Cve, Dataset, Platform, Release, ReleaseCve } from "./types.ts";
 import { PLATFORMS } from "./types.ts";
-import { daysBetween, minDate } from "./dates.ts";
+import { daysBetween, maxDate, minDate } from "./dates.ts";
 import { median, worst } from "./stats.ts";
-import { WINDOW_START } from "./methodology.ts";
+import { ACTIVE_BRANCH_DAYS, WINDOW_START } from "./methodology.ts";
 
 // ---------------------------------------------------------------------------
 // Index
 
 export interface BranchSpan {
   firstReleaseDate: string;
+  /** Last release of any kind, including ones with no published CVE entries. */
+  lastReleaseDate: string;
   /** Sorted release dates of releases that list at least one CVE. */
   securityReleaseDates: string[];
 }
@@ -23,19 +25,23 @@ export interface Index {
   spans: Map<string, BranchSpan>;
   listingsByCve: Map<string, ReleaseCve[]>;
   cves: Map<string, Cve>;
+  /** Date the data describes ("as of"); used to tell an ended branch from one whose next update is still due. */
+  asOf: string;
 }
 
-export function buildIndex(ds: Pick<Dataset, "branches" | "releases" | "releaseCves" | "cves">): Index {
+export function buildIndex(ds: Pick<Dataset, "branches" | "releases" | "releaseCves" | "cves"> & { meta?: Dataset["meta"] }): Index {
   const branches = new Map(ds.branches.map((b) => [b.id, b]));
   const releases = new Map(ds.releases.map((r) => [r.id, r]));
   const spans = new Map<string, BranchSpan>();
   for (const r of ds.releases) {
     let s = spans.get(r.branchId);
     if (!s) {
-      s = { firstReleaseDate: r.releaseDate, securityReleaseDates: [] };
+      s = { firstReleaseDate: r.releaseDate, lastReleaseDate: r.releaseDate, securityReleaseDates: [] };
       spans.set(r.branchId, s);
     }
     if (r.releaseDate < s.firstReleaseDate) s.firstReleaseDate = r.releaseDate;
+    const last = [r.releaseDate, ...r.rereleaseDates].sort().at(-1)!;
+    if (last > s.lastReleaseDate) s.lastReleaseDate = last;
     if (r.hasCveEntries) s.securityReleaseDates.push(r.releaseDate);
   }
   for (const s of spans.values()) s.securityReleaseDates.sort();
@@ -47,7 +53,9 @@ export function buildIndex(ds: Pick<Dataset, "branches" | "releases" | "releaseC
     else listingsByCve.set(rc.cveId, [rc]);
   }
   const cves = new Map(ds.cves.map((c) => [c.id, c]));
-  return { branches, releases, spans, listingsByCve, cves };
+  const latestRelease = maxDate(ds.releases.map((r) => r.releaseDate)) ?? "1970-01-01";
+  const asOf = ds.meta?.updatedAt ? ds.meta.updatedAt.slice(0, 10) : latestRelease;
+  return { branches, releases, spans, listingsByCve, cves, asOf };
 }
 
 // ---------------------------------------------------------------------------
@@ -180,7 +188,9 @@ function platformTimeline(idx: Index, platform: Platform, listings: Listing[]): 
       continue;
     }
     const lastBefore = span.securityReleaseDates.filter((d) => d < earliestFixDate).at(-1) ?? null;
-    const stillActive = span.securityReleaseDates.some((d) => d >= earliestFixDate);
+    // Still maintained: it shipped something on/after the earliest fix, or its next update may simply not be due yet.
+    const stillActive =
+      span.lastReleaseDate >= earliestFixDate || daysBetween(span.lastReleaseDate, idx.asOf) <= ACTIVE_BRANCH_DAYS;
     if (stillActive) outcomes.push({ branch, older, status: { kind: "no-fix-listed" } });
     else if (lastBefore !== null) outcomes.push({ branch, older, status: { kind: "branch-ended", lastSecurityReleaseDate: lastBefore } });
     // A branch with no security releases at all, ever, carries no information: omitted.

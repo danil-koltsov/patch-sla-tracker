@@ -7,6 +7,13 @@ export const METHODOLOGY_VERSION = "1.0.0";
 /** Only CVEs whose earliest fix (any Apple platform) is on/after this date are counted. */
 export const WINDOW_START = "2023-01-01";
 
+/**
+ * A branch with no release since the earliest fix still counts as maintained ("no fix listed")
+ * if its last release is at most this many days before the data date. Older branches have gone
+ * up to ~6 months between updates (iOS 15.8.4 → 15.8.5).
+ */
+export const ACTIVE_BRANCH_DAYS = 180;
+
 export const METHODOLOGY_HISTORY: { version: string; date: string; change: string }[] = [
   { version: "1.0.0", date: "2026-10-06", change: "First published methodology." },
 ];
@@ -24,9 +31,9 @@ export const TERMS = {
   backportGap:
     "For one CVE and one branch: the branch's first fix date minus the earliest fix date across all branches of the same platform.",
   noFixListed:
-    "The branch kept receiving security updates after the earliest fix, but no Apple advisory lists this CVE for it. The branch may be unaffected; Apple does not publish “not affected” statements.",
+    "The branch is still maintained (it shipped an update after the earliest fix, or its last update is under 180 days old), but no Apple advisory lists this CVE for it as of the data date. The branch may be unaffected; Apple does not publish “not affected” statements.",
   branchEnded:
-    "The branch received no further security updates after the earliest fix, so it is not counted as missing a backport.",
+    "The branch shipped no update after the earliest fix and none in the 180 days before the data date, so it is treated as ended and not counted as missing a backport.",
   laterMajor:
     "The branch was first released after the earliest fix, so its listing of the CVE is not a backport and is not counted.",
   disclosureLag:
