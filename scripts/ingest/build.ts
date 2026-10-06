@@ -6,6 +6,7 @@ import { branchId, parseReleaseName, releaseId, sameRelease, type ReleaseIdentit
 export interface KevEntry {
   dateAdded: string;
   dueDate: string | null;
+  vendorProject: string | null;
 }
 
 export interface BuildInput {
@@ -106,7 +107,13 @@ export function buildDataset(input: BuildInput): BuildResult {
   const cveIds = new Set([...listings.values()].map((l) => l.cveId));
   const cves: Cve[] = [...cveIds].sort().map((id) => {
     const k = input.kev.get(id);
-    return { id, nvdPublished: input.nvdPublished.get(id) ?? null, kevDateAdded: k?.dateAdded ?? null, kevDueDate: k?.dueDate ?? null };
+    return {
+      id,
+      nvdPublished: input.nvdPublished.get(id) ?? null,
+      kevDateAdded: k?.dateAdded ?? null,
+      kevDueDate: k?.dueDate ?? null,
+      kevVendorProject: k?.vendorProject ?? null,
+    };
   });
 
   return {

@@ -38,6 +38,8 @@ export interface Cve {
   nvdPublished: string | null;
   kevDateAdded: string | null;
   kevDueDate: string | null;
+  /** KEV "vendorProject" (e.g. "Apple", "Google"). Null when not in KEV. */
+  kevVendorProject: string | null;
 }
 
 export interface DatasetMeta {

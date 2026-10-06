@@ -197,19 +197,22 @@
    "id": "CVE-2023-1000",
    "nvdPublished": "2023-10-25",
    "kevDateAdded": "2023-10-26",
-   "kevDueDate": "2023-11-16"
+   "kevDueDate": "2023-11-16",
+   "kevVendorProject": "Apple"
   },
   {
    "id": "CVE-2023-37450",
    "nvdPublished": "2023-07-27",
    "kevDateAdded": "2023-07-13",
-   "kevDueDate": null
+   "kevDueDate": null,
+   "kevVendorProject": "Apple"
   },
   {
    "id": "CVE-2024-0100",
    "nvdPublished": "2024-05-14",
    "kevDateAdded": null,
-   "kevDueDate": null
+   "kevDueDate": null,
+   "kevVendorProject": null
   }
  ]
 }

@@ -31,11 +31,13 @@ export const TERMS = {
   backportGap:
     "For one CVE and one branch: the branch's first fix date minus the earliest fix date across all branches of the same platform.",
   noFixListed:
-    "The branch is still maintained (it shipped an update after the earliest fix, or its last update is under 180 days old), but no Apple advisory lists this CVE for it as of the data date. The branch may be unaffected; Apple does not publish “not affected” statements.",
+    "The branch is still maintained (it shipped a security update after the earliest fix, or its last security update is under 180 days old), but no Apple advisory lists this CVE for it as of the data date. The branch may be unaffected; Apple does not publish “not affected” statements.",
   branchEnded:
-    "The branch shipped no update after the earliest fix and none in the 180 days before the data date, so it is treated as ended and not counted as missing a backport.",
-  laterMajor:
-    "The branch was first released after the earliest fix, so its listing of the CVE is not a backport and is not counted.",
+    "The branch shipped no security update after the earliest fix and none in the 180 days before the data date, so it is treated as ended and not counted as missing a backport. Updates without published CVE entries do not keep a branch alive.",
+  atBranchRelease:
+    "The branch was first released after the earliest fix, so it is not a backport and is not counted. “Listed”: its advisory names the CVE. “Inherited”: it does not, and the fix is assumed to be in the branch from its first release.",
+  thirdParty:
+    "CISA KEV files the CVE under a vendor other than Apple (e.g. Google for Chromium code shipped in WebKit/ANGLE). The flaw is in a component Apple ships but does not own.",
   disclosureLag:
     "NVD publication date minus the earliest fix date. Negative when the CVE record was published before the fix.",
 } as const;

@@ -70,7 +70,14 @@ export class SupabaseWriter {
     await this.upsert(
       "cves",
       "id",
-      ds.cves.map((c) => ({ id: c.id, nvd_published: c.nvdPublished, kev_date_added: c.kevDateAdded, kev_due_date: c.kevDueDate, last_seen_run: run })),
+      ds.cves.map((c) => ({
+        id: c.id,
+        nvd_published: c.nvdPublished,
+        kev_date_added: c.kevDateAdded,
+        kev_due_date: c.kevDueDate,
+        kev_vendor_project: c.kevVendorProject,
+        last_seen_run: run,
+      })),
     );
     await this.upsert(
       "release_cves",

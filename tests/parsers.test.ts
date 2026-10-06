@@ -87,7 +87,7 @@ describe("buildDataset", () => {
   const { dataset, warnings } = buildDataset({
     rows,
     advisories,
-    kev: new Map([["CVE-2023-37450", { dateAdded: "2023-07-13", dueDate: "2023-08-03" }]]),
+    kev: new Map([["CVE-2023-37450", { dateAdded: "2023-07-13", dueDate: "2023-08-03", vendorProject: "Apple" }]]),
     kevCatalogVersion: "t",
     nvdPublished: new Map([["CVE-2023-37450", "2023-07-27"]]),
     updatedAt: "2026-10-06T00:00:00Z",
@@ -115,6 +115,7 @@ describe("buildDataset", () => {
       nvdPublished: "2023-07-27",
       kevDateAdded: "2023-07-13",
       kevDueDate: "2023-08-03",
+      kevVendorProject: "Apple",
     });
     expect(dataset.cves.find((c) => c.id === "CVE-2025-46288")).toMatchObject({ nvdPublished: null, kevDateAdded: null });
     expect(dataset.cves.some((c) => c.id.startsWith("CVE-2099"))).toBe(false);
@@ -130,7 +131,7 @@ describe("KEV and NVD parsing", () => {
   it("parses KEV and keeps non-Apple vendors (joined on cveID)", () => {
     const k = parseKev(JSON.stringify({ catalogVersion: "2026.10.04", vulnerabilities: [{ cveID: "CVE-2025-14174", vendorProject: "Google", dateAdded: "2025-12-12", dueDate: "2026-01-02" }] }));
     expect(k.catalogVersion).toBe("2026.10.04");
-    expect(k.entries.get("CVE-2025-14174")).toEqual({ dateAdded: "2025-12-12", dueDate: "2026-01-02" });
+    expect(k.entries.get("CVE-2025-14174")).toEqual({ dateAdded: "2025-12-12", dueDate: "2026-01-02", vendorProject: "Google" });
   });
 
   it("rejects a KEV feed without vulnerabilities", () => {

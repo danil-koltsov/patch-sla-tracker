@@ -6,6 +6,8 @@ export class Fixture {
   releases: Release[] = [];
   releaseCves: ReleaseCve[] = [];
   cves: Cve[] = [];
+  /** Data date ("as of"); decides whether a quiet branch counts as still maintained. */
+  asOf = "2026-10-06";
 
   branch(platform: Platform, major: number): string {
     const id = `${platform.toLowerCase()}-${major}`;
@@ -44,13 +46,20 @@ export class Fixture {
   }
 
   cve(id: string, f: Partial<Omit<Cve, "id">> = {}): this {
-    this.cves.push({ id, nvdPublished: f.nvdPublished ?? null, kevDateAdded: f.kevDateAdded ?? null, kevDueDate: f.kevDueDate ?? null });
+    this.cves = this.cves.filter((c) => c.id !== id);
+    this.cves.push({
+      id,
+      nvdPublished: f.nvdPublished ?? null,
+      kevDateAdded: f.kevDateAdded ?? null,
+      kevDueDate: f.kevDueDate ?? null,
+      kevVendorProject: f.kevVendorProject ?? (f.kevDateAdded ? "Apple" : null),
+    });
     return this;
   }
 
   dataset(): Dataset {
     return {
-      meta: { updatedAt: "2026-10-06T00:00:00Z", kevCatalogVersion: "test" },
+      meta: { updatedAt: `${this.asOf}T00:00:00Z`, kevCatalogVersion: "test" },
       branches: this.branches,
       releases: this.releases,
       releaseCves: this.releaseCves,

@@ -2,14 +2,14 @@ import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { beforeAll, describe, expect, it } from "vitest";
 
-const migration = readFileSync(new URL("../supabase/migrations/0001_init.sql", import.meta.url), "utf8");
+const migrations = ["0001_init.sql", "0002_kev_vendor.sql"].map((f) => readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), "utf8"));
 let db: PGlite;
 
 beforeAll(async () => {
   db = new PGlite();
   // Roles that exist in every Supabase project.
   await db.exec(`create role anon nologin; create role authenticated nologin; create role service_role nologin bypassrls;`);
-  await db.exec(migration);
+  for (const m of migrations) await db.exec(m);
   await db.exec(`
     insert into branches (id, platform, major, name) values ('ios-16','iOS',16,'iOS 16'), ('ios-17','iOS',17,'iOS 17');
     insert into releases (id, branch_id, version, kind, release_date, name, advisory_url, has_cve_entries, last_seen_run) values

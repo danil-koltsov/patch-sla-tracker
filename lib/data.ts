@@ -2,9 +2,6 @@ import { readFile } from "node:fs/promises";
 import type { Branch, Cve, Dataset, Platform, Release, ReleaseCve } from "./types.ts";
 import { allTimelines, buildIndex, type CveTimeline, type Index } from "./metrics.ts";
 
-/** Pages are regenerated at most once a day; ingestion runs daily. */
-export const REVALIDATE_SECONDS = 86_400;
-
 const PAGE = 1000;
 
 async function fetchAll<T>(base: string, key: string, table: string, order: string): Promise<T[]> {
@@ -12,7 +9,7 @@ async function fetchAll<T>(base: string, key: string, table: string, order: stri
   for (let from = 0; ; from += PAGE) {
     const res = await fetch(`${base}/rest/v1/${table}?select=*&order=${order}`, {
       headers: { apikey: key, Authorization: `Bearer ${key}`, Range: `${from}-${from + PAGE - 1}`, "Range-Unit": "items" },
-      next: { revalidate: REVALIDATE_SECONDS },
+      cache: "force-cache", // read once per build; the site is rebuilt daily after ingestion
     });
     if (!res.ok) throw new Error(`Supabase ${table}: HTTP ${res.status}`);
     const rows = (await res.json()) as T[];
@@ -67,6 +64,7 @@ async function fromSupabase(url: string, key: string): Promise<Dataset> {
         nvdPublished: (c.nvd_published as string) ?? null,
         kevDateAdded: (c.kev_date_added as string) ?? null,
         kevDueDate: (c.kev_due_date as string) ?? null,
+        kevVendorProject: (c.kev_vendor_project as string) ?? null,
       }),
     ),
   };
@@ -78,11 +76,11 @@ export interface Loaded {
   timelines: CveTimeline[];
 }
 
-let memo: { at: number; value: Promise<Loaded> } | null = null;
+let memo: { value: Promise<Loaded> } | null = null;
 
-/** Loads and indexes the dataset once per process per revalidation period. */
+/** Loads and indexes the dataset once per build process. */
 export function loadData(): Promise<Loaded> {
-  if (memo && Date.now() - memo.at < REVALIDATE_SECONDS * 1000) return memo.value;
+  if (memo) return memo.value;
   const value = (async () => {
     const snapshot = process.env.DATA_SNAPSHOT;
     const url = process.env.SUPABASE_URL;
@@ -94,7 +92,7 @@ export function loadData(): Promise<Loaded> {
     const index = buildIndex(dataset);
     return { dataset, index, timelines: allTimelines(index) };
   })();
-  memo = { at: Date.now(), value };
+  memo = { value };
   value.catch(() => {
     memo = null;
   });

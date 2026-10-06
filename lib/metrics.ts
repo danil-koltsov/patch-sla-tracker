@@ -13,9 +13,7 @@ import { ACTIVE_BRANCH_DAYS, WINDOW_START } from "./methodology.ts";
 
 export interface BranchSpan {
   firstReleaseDate: string;
-  /** Last release of any kind, including ones with no published CVE entries. */
-  lastReleaseDate: string;
-  /** Sorted release dates of releases that list at least one CVE. */
+  /** Sorted release dates of security releases (releases that list at least one CVE). */
   securityReleaseDates: string[];
 }
 
@@ -36,12 +34,10 @@ export function buildIndex(ds: Pick<Dataset, "branches" | "releases" | "releaseC
   for (const r of ds.releases) {
     let s = spans.get(r.branchId);
     if (!s) {
-      s = { firstReleaseDate: r.releaseDate, lastReleaseDate: r.releaseDate, securityReleaseDates: [] };
+      s = { firstReleaseDate: r.releaseDate, securityReleaseDates: [] };
       spans.set(r.branchId, s);
     }
     if (r.releaseDate < s.firstReleaseDate) s.firstReleaseDate = r.releaseDate;
-    const last = [r.releaseDate, ...r.rereleaseDates].sort().at(-1)!;
-    if (last > s.lastReleaseDate) s.lastReleaseDate = last;
     if (r.hasCveEntries) s.securityReleaseDates.push(r.releaseDate);
   }
   for (const s of spans.values()) s.securityReleaseDates.sort();
@@ -58,6 +54,19 @@ export function buildIndex(ds: Pick<Dataset, "branches" | "releases" | "releaseC
   return { branches, releases, spans, listingsByCve, cves, asOf };
 }
 
+/**
+ * Branches still maintained on the data date: their last security release is at most
+ * ACTIVE_BRANCH_DAYS old. Updates without published CVE entries do not count.
+ */
+export function maintainedBranchIds(idx: Index): Set<string> {
+  const out = new Set<string>();
+  for (const [id, span] of idx.spans) {
+    const last = span.securityReleaseDates.at(-1);
+    if (last && daysBetween(last, idx.asOf) <= ACTIVE_BRANCH_DAYS) out.add(id);
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Per-CVE timeline
 
@@ -65,7 +74,12 @@ export type BranchStatus =
   | { kind: "fixed"; fixDate: string; releaseId: string; gapDays: number }
   | { kind: "no-fix-listed" }
   | { kind: "branch-ended"; lastSecurityReleaseDate: string | null }
-  | { kind: "later-major"; fixDate: string; releaseId: string };
+  /**
+   * The branch was first released after the earliest fix, so it is not a backport.
+   * listed: an advisory of this branch lists the CVE (releaseId/fixDate from that listing);
+   * otherwise the fix is assumed inherited and fixDate is the branch's first release.
+   */
+  | { kind: "fixed-at-branch-release"; fixDate: string; releaseId: string | null; listed: boolean };
 
 export interface BranchOutcome {
   branch: Branch;
@@ -100,6 +114,8 @@ export interface CveTimeline {
   appleExploitedNote: boolean;
   /** Documented exploitation before a patch existed (Apple's note, or KEV listing earlier than the first fix). */
   exploitedBeforePatch: boolean;
+  /** KEV files the CVE under a vendor other than Apple (e.g. Google for Chromium/ANGLE). Null when not third-party or unknown. */
+  thirdPartyVendor: string | null;
   /** Metric 1: first fix − KEV dateAdded, in days. Positive = KEV listed it before a patch existed. */
   kevWindowDays: number | null;
   /** Metric 3: NVD published − first fix, in days. */
@@ -121,13 +137,15 @@ export function cveTimeline(idx: Index, cveId: string): CveTimeline | null {
 
   const firstFixDate = listings[0]!.release.releaseDate;
   const firstFixReleaseIds = listings.filter((l) => l.release.releaseDate === firstFixDate).map((l) => l.release.id);
-  const cve: Cve = idx.cves.get(cveId) ?? { id: cveId, nvdPublished: null, kevDateAdded: null, kevDueDate: null };
+  const cve: Cve = idx.cves.get(cveId) ?? { id: cveId, nvdPublished: null, kevDateAdded: null, kevDueDate: null, kevVendorProject: null };
 
   const appleExploitedNote = listings.some((l) => l.exploitedNote);
   const kevWindowDays = cve.kevDateAdded ? daysBetween(cve.kevDateAdded, firstFixDate) : null;
   const exploited = appleExploitedNote || cve.kevDateAdded !== null;
   const exploitedBeforePatch = appleExploitedNote || (kevWindowDays !== null && kevWindowDays > 0);
   const disclosureLagDays = cve.nvdPublished ? daysBetween(firstFixDate, cve.nvdPublished) : null;
+  const vendor = cve.kevVendorProject?.trim() ?? null;
+  const thirdPartyVendor = vendor && vendor.toLowerCase() !== "apple" ? vendor : null;
 
   const platforms: PlatformTimeline[] = [];
   for (const platform of PLATFORMS) {
@@ -146,6 +164,7 @@ export function cveTimeline(idx: Index, cveId: string): CveTimeline | null {
     exploited,
     appleExploitedNote,
     exploitedBeforePatch,
+    thirdPartyVendor,
     kevWindowDays,
     disclosureLagDays,
     platforms,
@@ -176,8 +195,18 @@ function platformTimeline(idx: Index, platform: Platform, listings: Listing[]): 
     const fix = firstByBranch.get(branch.id);
     const older = branch.major < newestMajorAtFirstFix;
     if (!existedAt(branch)) {
-      if (fix) outcomes.push({ branch, older: false, status: { kind: "later-major", fixDate: fix.release.releaseDate, releaseId: fix.release.id } });
-      continue; // branches that did not exist yet and never listed it are irrelevant
+      // Not a backport target: the branch did not exist when the fix first shipped.
+      // Only branches newer than the platform's newest at that date inherit the fix.
+      if (fix) {
+        outcomes.push({
+          branch,
+          older: false,
+          status: { kind: "fixed-at-branch-release", fixDate: fix.release.releaseDate, releaseId: fix.release.id, listed: true },
+        });
+      } else if (branch.major > newestMajorAtFirstFix) {
+        outcomes.push({ branch, older: false, status: { kind: "fixed-at-branch-release", fixDate: span.firstReleaseDate, releaseId: null, listed: false } });
+      }
+      continue;
     }
     if (fix) {
       outcomes.push({
@@ -188,10 +217,12 @@ function platformTimeline(idx: Index, platform: Platform, listings: Listing[]): 
       continue;
     }
     const lastBefore = span.securityReleaseDates.filter((d) => d < earliestFixDate).at(-1) ?? null;
-    // Still maintained: it shipped something on/after the earliest fix, or its next update may simply not be due yet.
-    const stillActive =
-      span.lastReleaseDate >= earliestFixDate || daysBetween(span.lastReleaseDate, idx.asOf) <= ACTIVE_BRANCH_DAYS;
-    if (stillActive) outcomes.push({ branch, older, status: { kind: "no-fix-listed" } });
+    // Maintained = shipped a security release on/after the earliest fix, or its last security release
+    // is recent enough that the next one may simply not be due yet. Updates without CVE entries don't count.
+    const lastSecurity = span.securityReleaseDates.at(-1) ?? null;
+    const maintained =
+      lastSecurity !== null && (lastSecurity >= earliestFixDate || daysBetween(lastSecurity, idx.asOf) <= ACTIVE_BRANCH_DAYS);
+    if (maintained) outcomes.push({ branch, older, status: { kind: "no-fix-listed" } });
     else if (lastBefore !== null) outcomes.push({ branch, older, status: { kind: "branch-ended", lastSecurityReleaseDate: lastBefore } });
     // A branch with no security releases at all, ever, carries no information: omitted.
   }
@@ -222,16 +253,17 @@ function stat(rows: { days: number; cveId: string }[]): Stat {
   return { n: rows.length, median: median(rows.map((r) => r.days)), worst: w ? { days: w.value, cveId: w.item.cveId } : null };
 }
 
-/** Metric 1 — exploited CVEs: KEV dateAdded relative to the first fix. */
+/** Metric 1 — exploited CVEs: Apple's zero-day note, and KEV dateAdded relative to the first fix. */
 export interface ExploitedSummary {
   exploited: number; // exploited CVEs in window
-  appleNote: number; // of which Apple said "may have been exploited"
+  appleNote: number; // of which Apple said "may have been exploited" (attacked before a patch existed)
   withKev: number;
   kevBeforePatch: number; // KEV dateAdded earlier than the first fix
   unknownKev: number; // exploited per Apple, not (yet) in KEV
+  thirdParty: number; // KEV vendor is not Apple
   /** Over CVEs with a KEV date: first fix − KEV dateAdded. Worst = the largest value. */
   window: Stat;
-  /** Same data, as "days from first fix until KEV listing" (positive = after), for plain-language headlines. */
+  /** Same data, as "days from first fix until KEV listing" (positive = after), for plain-language text. */
   kevAfterPatch: Stat;
 }
 
@@ -244,6 +276,7 @@ export function exploitedSummary(timelines: CveTimeline[]): ExploitedSummary {
     withKev: withKev.length,
     kevBeforePatch: withKev.filter((t) => t.kevWindowDays! > 0).length,
     unknownKev: ex.length - withKev.length,
+    thirdParty: ex.filter((t) => t.thirdPartyVendor !== null).length,
     window: stat(withKev.map((t) => ({ days: t.kevWindowDays!, cveId: t.id }))),
     kevAfterPatch: stat(withKev.map((t) => ({ days: -t.kevWindowDays!, cveId: t.id }))),
   };
@@ -252,10 +285,12 @@ export function exploitedSummary(timelines: CveTimeline[]): ExploitedSummary {
 /** Metric 2 — backport gap per branch. */
 export interface BranchGapRow {
   branch: Branch;
+  maintained: boolean; // still receiving security releases on the data date
   fixed: Stat; // gap over CVEs this branch received
   sameDay: number; // fixed with gap 0
   noFixListed: number;
   branchEnded: number;
+  atBranchRelease: number; // newer branch released after the earliest fix (not counted in gaps)
 }
 
 export interface BackportSummary {
@@ -263,40 +298,45 @@ export interface BackportSummary {
   scope: "exploited" | "all";
   cves: number;
   rows: BranchGapRow[]; // newest major first
-  /** Gaps on branches older than the newest branch existing at the earliest fix. */
-  older: Stat & { noFixListed: number };
+  /** The oldest branch still maintained on the data date that is older than the newest branch — the headline. */
+  oldestMaintained: BranchGapRow | null;
 }
 
-export function backportSummary(timelines: CveTimeline[], platform: Platform, scope: "exploited" | "all"): BackportSummary {
+export function backportSummary(idx: Index, timelines: CveTimeline[], platform: Platform, scope: "exploited" | "all"): BackportSummary {
+  const maintained = maintainedBranchIds(idx);
   const relevant = timelines.filter((t) => t.inWindow && (scope === "all" || t.exploited));
-  const perBranch = new Map<string, { branch: Branch; gaps: { days: number; cveId: string }[]; noFix: number; ended: number }>();
-  const olderGaps: { days: number; cveId: string }[] = [];
-  let olderNoFix = 0;
+  const perBranch = new Map<string, { branch: Branch; gaps: { days: number; cveId: string }[]; noFix: number; ended: number; atRelease: number }>();
   let cves = 0;
   for (const t of relevant) {
     const p = t.platforms.find((x) => x.platform === platform);
     if (!p) continue;
     cves++;
     for (const o of p.outcomes) {
-      if (o.status.kind === "later-major") continue;
       let row = perBranch.get(o.branch.id);
       if (!row) {
-        row = { branch: o.branch, gaps: [], noFix: 0, ended: 0 };
+        row = { branch: o.branch, gaps: [], noFix: 0, ended: 0, atRelease: 0 };
         perBranch.set(o.branch.id, row);
       }
-      if (o.status.kind === "fixed") {
-        row.gaps.push({ days: o.status.gapDays, cveId: t.id });
-        if (o.older) olderGaps.push({ days: o.status.gapDays, cveId: t.id });
-      } else if (o.status.kind === "no-fix-listed") {
-        row.noFix++;
-        if (o.older) olderNoFix++;
-      } else row.ended++;
+      if (o.status.kind === "fixed") row.gaps.push({ days: o.status.gapDays, cveId: t.id });
+      else if (o.status.kind === "no-fix-listed") row.noFix++;
+      else if (o.status.kind === "branch-ended") row.ended++;
+      else row.atRelease++;
     }
   }
-  const rows = [...perBranch.values()]
+  const rows: BranchGapRow[] = [...perBranch.values()]
     .sort((a, b) => b.branch.major - a.branch.major)
-    .map((r) => ({ branch: r.branch, fixed: stat(r.gaps), sameDay: r.gaps.filter((g) => g.days === 0).length, noFixListed: r.noFix, branchEnded: r.ended }));
-  return { platform, scope, cves, rows, older: { ...stat(olderGaps), noFixListed: olderNoFix } };
+    .map((r) => ({
+      branch: r.branch,
+      maintained: maintained.has(r.branch.id),
+      fixed: stat(r.gaps),
+      sameDay: r.gaps.filter((g) => g.days === 0).length,
+      noFixListed: r.noFix,
+      branchEnded: r.ended,
+      atBranchRelease: r.atRelease,
+    }));
+  const newest = rows[0]?.branch.major;
+  const candidates = rows.filter((r) => r.maintained && r.branch.major !== newest && r.fixed.n > 0);
+  return { platform, scope, cves, rows, oldestMaintained: candidates.at(-1) ?? null };
 }
 
 /** Metric 3 — disclosure lag (NVD published − first fix) over all CVEs in window. */
