@@ -1,10 +1,8 @@
-import { CveLink, DataError, Def, Days } from "../components/bits.tsx";
+import { CveLink, DataError, Def } from "../components/bits.tsx";
 import { loadData } from "../lib/data.ts";
 import { TERMS, WINDOW_START } from "../lib/methodology.ts";
 import { backportSummary, disclosureSummary, exploitedSummary } from "../lib/metrics.ts";
 import { formatDays } from "../lib/stats.ts";
-
-export const revalidate = 86400; // must be a literal; equals REVALIDATE_SECONDS
 
 export default async function Home() {
   let data;
@@ -18,8 +16,9 @@ export default async function Home() {
       </>
     );
   }
-  const { timelines } = data;
-  const ios = backportSummary(timelines, "iOS", "exploited");
+  const { index, timelines } = data;
+  const ios = backportSummary(index, timelines, "iOS", "exploited");
+  const oldest = ios.oldestMaintained;
   const ex = exploitedSummary(timelines);
   const disc = disclosureSummary(timelines);
 
@@ -32,26 +31,43 @@ export default async function Home() {
       </p>
 
       <section className="headline-block" aria-labelledby="h-backport">
-        <p className="headline" id="h-backport">
-          Older iPhones waited a median of <strong>{formatDays(ios.older.median)}</strong> for fixes to exploited flaws already shipped to the newest
-          iOS.
-        </p>
-        <p className="muted">
-          Worst case: {ios.older.worst ? <>{formatDays(ios.older.worst.days)} ({<CveLink id={ios.older.worst.cveId} />})</> : "unknown"}.{" "}
-          {ios.older.noFixListed} older-branch cases have no fix listed at all. Based on {ios.older.n} fixes. <a href="/apple#backport">Details</a>
-        </p>
+        {oldest ? (
+          <>
+            <p className="headline" id="h-backport">
+              {oldest.branch.name}, the oldest iPhone branch Apple still patches, got fixes for exploited flaws a median of{" "}
+              <strong>{formatDays(oldest.fixed.median)}</strong> after Apple&apos;s first fix.
+            </p>
+            <p className="muted">
+              Worst case:{" "}
+              {oldest.fixed.worst ? (
+                <>
+                  {formatDays(oldest.fixed.worst.days)} (<CveLink id={oldest.fixed.worst.cveId} />)
+                </>
+              ) : (
+                "unknown"
+              )}
+              . Based on {oldest.fixed.n} fixes; {oldest.noFixListed} exploited flaws have no {oldest.branch.name} fix listed.{" "}
+              <a href="/apple#backport">Every branch</a>
+            </p>
+          </>
+        ) : (
+          <p className="headline" id="h-backport">
+            No maintained older iOS branch has received fixes for exploited flaws in the window. <a href="/apple#backport">Every branch</a>
+          </p>
+        )}
         <Def term="Backport gap">{TERMS.backportGap}</Def>
       </section>
 
-      <section className="headline-block" aria-labelledby="h-kev">
-        <p className="headline" id="h-kev">
-          CISA catalogued exploited Apple flaws a median of <strong>{formatDays(ex.kevAfterPatch.median)}</strong> after Apple&apos;s first patch.
+      <section className="headline-block" aria-labelledby="h-exploited">
+        <p className="headline" id="h-exploited">
+          <strong className="exploited">{ex.appleNote}</strong> of {ex.exploited} exploited Apple flaws were attacked before a patch existed, per
+          Apple.
         </p>
         <p className="muted">
-          {ex.kevBeforePatch} of {ex.withKev} were catalogued before any patch existed; {ex.appleNote} of {ex.exploited} were already exploited when
-          Apple released the fix, per Apple. <a href="/apple#exploited">Details</a>
+          CISA&apos;s exploited-vulnerability catalog listed them a median of {formatDays(ex.kevAfterPatch.median)} after Apple&apos;s first patch;{" "}
+          {ex.kevBeforePatch} of {ex.withKev} were listed before any patch existed. <a href="/apple#exploited">Details</a>
         </p>
-        <Def term="KEV date added (proxy)">{TERMS.kevProxy}</Def>
+        <Def term="Exploited">{TERMS.exploited}</Def>
       </section>
 
       <section className="headline-block" aria-labelledby="h-disc">
@@ -59,13 +75,14 @@ export default async function Home() {
           NVD published Apple CVEs a median of <strong>{formatDays(disc.lag.median)}</strong> after Apple&apos;s fix.
         </p>
         <p className="muted">
-          Worst case: <Days n={disc.lag.worst?.days ?? null} />
+          Worst case:{" "}
           {disc.lag.worst ? (
             <>
-              {" "}
-              (<CveLink id={disc.lag.worst.cveId} />)
+              {formatDays(disc.lag.worst.days)} (<CveLink id={disc.lag.worst.cveId} />)
             </>
-          ) : null}
+          ) : (
+            "unknown"
+          )}
           . NVD date unknown for {disc.unknown} of {disc.cves} CVEs. <a href="/apple#disclosure">Details</a>
         </p>
         <Def term="Disclosure lag">{TERMS.disclosureLag}</Def>

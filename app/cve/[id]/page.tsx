@@ -6,20 +6,11 @@ import { loadData } from "../../../lib/data.ts";
 import { TERMS, WINDOW_START } from "../../../lib/methodology.ts";
 import { cveTimeline, type BranchStatus } from "../../../lib/metrics.ts";
 
-export const revalidate = 86400; // must be a literal; equals REVALIDATE_SECONDS
-export const dynamicParams = true;
+export const dynamicParams = false; // static export: unknown IDs get the 404 page
 
 const CVE_ID = /^CVE-\d{4}-\d{4,}$/;
 
-/** Pre-render exploited CVEs; the rest render on first request and are cached for a day. */
-export async function generateStaticParams() {
-  try {
-    const { timelines } = await loadData();
-    return timelines.filter((t) => t.inWindow && t.exploited).map((t) => ({ id: t.id }));
-  } catch {
-    return [];
-  }
-}
+export { generateStaticParams } from "./static-params.ts";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -38,8 +29,8 @@ function statusText(s: BranchStatus): string {
       return "no fix listed";
     case "branch-ended":
       return "branch ended";
-    case "later-major":
-      return "branch released later (not counted)";
+    case "fixed-at-branch-release":
+      return s.listed ? "fixed at branch release (listed)" : "fixed at branch release (inherited)";
   }
 }
 
@@ -63,6 +54,12 @@ export default async function CvePage({ params }: { params: Promise<{ id: string
         </p>
       ) : t.exploited ? (
         <p>Known exploited (listed in CISA KEV after the first fix).</p>
+      ) : null}
+      {t.thirdPartyVendor ? (
+        <p>
+          <strong>Third-party component.</strong> CISA KEV files this CVE under {t.thirdPartyVendor}, not Apple: the flaw is in code Apple ships
+          but does not own, so another vendor may have fixed it first.
+        </p>
       ) : null}
       {!t.inWindow ? (
         <p className="muted">First fixed before {WINDOW_START}; shown for reference but not counted in the Apple-wide numbers.</p>
@@ -111,6 +108,7 @@ export default async function CvePage({ params }: { params: Promise<{ id: string
       <Def term="Backport gap">{TERMS.backportGap}</Def>
       <Def term="No fix listed">{TERMS.noFixListed}</Def>
       <Def term="Branch ended">{TERMS.branchEnded}</Def>
+      <Def term="Fixed at branch release">{TERMS.atBranchRelease}</Def>
       <CveTimelineSvg t={t} />
       {t.platforms.map((p) => (
         <TableScroll key={p.platform} label={`${p.platform} branches for ${t.id}`}>
@@ -131,17 +129,17 @@ export default async function CvePage({ params }: { params: Promise<{ id: string
             <tbody>
               {p.outcomes.map((o) => {
                 const s = o.status;
-                const fix = s.kind === "fixed" || s.kind === "later-major" ? s : null;
-                const rel = fix ? index.releases.get(fix.releaseId) : undefined;
+                const fix = s.kind === "fixed" || s.kind === "fixed-at-branch-release" ? s : null;
+                const rel = fix?.releaseId ? index.releases.get(fix.releaseId) : undefined;
                 return (
                   <tr key={o.branch.id}>
                     <th scope="row">{o.branch.name}</th>
                     <td>{statusText(s)}</td>
                     <td>
-                      {fix && rel ? (
+                      {fix ? (
                         <>
                           <time dateTime={fix.fixDate}>{fix.fixDate}</time>{" "}
-                          {rel.advisoryUrl ? <a href={rel.advisoryUrl}>{rel.name}</a> : rel.name}
+                          {rel ? rel.advisoryUrl ? <a href={rel.advisoryUrl}>{rel.name}</a> : rel.name : <span className="muted">first {o.branch.name} release</span>}
                         </>
                       ) : (
                         <span className="muted">–</span>

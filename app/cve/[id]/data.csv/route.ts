@@ -2,12 +2,9 @@ import { loadData } from "../../../../lib/data.ts";
 import { csvResponse, exportEnvelope, exportRows, toCsv } from "../../../../lib/export.ts";
 import { cveTimeline } from "../../../../lib/metrics.ts";
 
-export const revalidate = 86400; // must be a literal; equals REVALIDATE_SECONDS
-
-/** Rendered on first request, then cached like the page (ISR). */
-export async function generateStaticParams() {
-  return [];
-}
+export const dynamic = "force-static"; // emitted as files by the static export
+export const dynamicParams = false;
+export { generateStaticParams } from "../static-params.ts";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const id = decodeURIComponent((await params).id).toUpperCase();

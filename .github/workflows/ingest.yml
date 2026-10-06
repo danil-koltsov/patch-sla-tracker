@@ -42,6 +42,11 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-      - name: Trigger Vercel rebuild (optional)
-        if: ${{ env.HOOK != '' }}
-        run: curl -fsS -X POST "$HOOK" > /dev/null
+      # The site is a static export: new data goes live only through this rebuild.
+      - name: Trigger Vercel rebuild
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::VERCEL_DEPLOY_HOOK_URL is not set; data was ingested but the site will not be rebuilt."
+            exit 1
+          fi
+          curl -fsS -X POST "$HOOK" > /dev/null

@@ -7,7 +7,6 @@ import { backportSummary, disclosureSummary, exploitedSummary, type CveTimeline,
 import { formatDays } from "../../lib/stats.ts";
 import { PLATFORMS } from "../../lib/types.ts";
 
-export const revalidate = 86400; // must be a literal; equals REVALIDATE_SECONDS
 export const metadata: Metadata = {
   title: "Apple",
   description: "Backport gaps between Apple OS branches, exploited-vulnerability timelines, and NVD disclosure lag for iOS, iPadOS and macOS.",
@@ -43,7 +42,7 @@ export default async function ApplePage() {
       </>
     );
   }
-  const { timelines } = data;
+  const { index, timelines } = data;
   const ex = exploitedSummary(timelines);
   const disc = disclosureSummary(timelines);
   const exploited = timelines.filter((t) => t.inWindow && t.exploited);
@@ -65,7 +64,8 @@ export default async function ApplePage() {
       <Def term="No fix listed">{TERMS.noFixListed}</Def>
       <Def term="Branch ended">{TERMS.branchEnded}</Def>
       {PLATFORMS.map((platform) => {
-        const s = backportSummary(timelines, platform, "exploited");
+        const s = backportSummary(index, timelines, platform, "exploited");
+        const o = s.oldestMaintained;
         return (
           <section key={platform} aria-labelledby={`bp-${platform}`}>
             <h3 id={`bp-${platform}`}>{platform}</h3>
@@ -73,24 +73,32 @@ export default async function ApplePage() {
               <p>No exploited {platform} CVEs in the window.</p>
             ) : (
               <>
-                <p>
-                  Older {platform} branches waited a median of <strong>{formatDays(s.older.median)}</strong>
-                  {s.older.worst ? (
-                    <>
-                      {" "}
-                      (worst: {formatDays(s.older.worst.days)}, <CveLink id={s.older.worst.cveId} />)
-                    </>
-                  ) : null}{" "}
-                  across {s.older.n} fixes for {s.cves} exploited CVEs. {s.older.noFixListed} older-branch cases have no fix listed.
-                </p>
+                {o ? (
+                  <p>
+                    {o.branch.name}, the oldest {platform} branch still maintained, got fixes for exploited flaws a median of{" "}
+                    <strong>{formatDays(o.fixed.median)}</strong> after the earliest fix
+                    {o.fixed.worst ? (
+                      <>
+                        {" "}
+                        (worst: {formatDays(o.fixed.worst.days)}, <CveLink id={o.fixed.worst.cveId} />)
+                      </>
+                    ) : null}
+                    , over {o.fixed.n} fixes. {o.noFixListed} exploited {platform} CVEs have no {o.branch.name} fix listed. Other branches are in the
+                    table.
+                  </p>
+                ) : (
+                  <p>No maintained older {platform} branch received fixes for exploited flaws in the window.</p>
+                )}
                 <TableScroll label={`${platform} backport gaps by branch`}>
                   <table>
                     <caption>
-                      {platform}: backport gap per branch, exploited CVEs. Branches that had ended for every CVE are omitted (see export).
+                      {platform}: backport gap per branch, exploited CVEs. Maintained: last security release under 180 days old. Branches that had ended for every CVE are
+                      omitted (see export).
                     </caption>
                     <thead>
                       <tr>
                         <th scope="col">Branch</th>
+                        <th scope="col">Maintained</th>
                         <th scope="col" className="num">
                           Fixed
                         </th>
@@ -115,6 +123,7 @@ export default async function ApplePage() {
                       {s.rows.filter((r) => r.fixed.n > 0 || r.noFixListed > 0).map((r) => (
                         <tr key={r.branch.id}>
                           <th scope="row">{r.branch.name}</th>
+                          <td>{r.maintained ? "yes" : "no"}</td>
                           <td className="num">{r.fixed.n}</td>
                           <td className="num">{r.sameDay}</td>
                           <StatCells s={r.fixed} />
@@ -132,22 +141,27 @@ export default async function ApplePage() {
         );
       })}
 
-      <h2 id="exploited">2. Exploited before patch (KEV proxy)</h2>
-      <p>For flaws known to be exploited: when did CISA catalogue the exploitation, relative to Apple&apos;s first patch?</p>
+      <h2 id="exploited">2. Exploited before patch</h2>
+      <p>Of the flaws known to be exploited, how many were attacked before any patch existed?</p>
+      <Def term="Exploited">{TERMS.exploited}</Def>
+      <p>
+        <strong className="exploited">{ex.appleNote}</strong> of {ex.exploited} exploited Apple flaws were attacked before a patch existed, per
+        Apple&apos;s own advisory (&ldquo;may have been exploited&rdquo;). How long before is not public.
+      </p>
       <Def term="KEV date added (proxy)">{TERMS.kevProxy}</Def>
       <p>
-        {ex.exploited} exploited CVEs; {ex.withKev} are in KEV. CISA catalogued them a median of{" "}
-        <strong>{formatDays(ex.kevAfterPatch.median)}</strong> after the first patch
+        Secondary, KEV proxy: {ex.withKev} are in CISA KEV, listed a median of {formatDays(ex.kevAfterPatch.median)} after the first patch
         {ex.kevAfterPatch.worst ? (
           <>
             {" "}
             (longest: {formatDays(ex.kevAfterPatch.worst.days)}, <CveLink id={ex.kevAfterPatch.worst.cveId} />)
           </>
         ) : null}
-        . <span className="exploited">{ex.kevBeforePatch}</span> were catalogued before any patch existed. {ex.appleNote} were described by Apple as
-        possibly exploited at release: exploitation began before the patch, but how long before is not public.{" "}
+        ; {ex.kevBeforePatch} were listed before any patch existed.{" "}
         {ex.unknownKev > 0 ? `${ex.unknownKev} are exploited per Apple but not in KEV (KEV date unknown).` : null}
       </p>
+      <Def term="Third-party component">{TERMS.thirdParty}</Def>
+      <p>{ex.thirdParty} of the exploited CVEs are in third-party components.</p>
       <ExploitedTable rows={exploited} />
 
       <h2 id="disclosure">3. Disclosure lag</h2>
@@ -190,6 +204,7 @@ function ExploitedTable({ rows }: { rows: CveTimeline[] }) {
               <th scope="row" className={t.exploitedBeforePatch ? "exploited" : undefined}>
                 <CveLink id={t.id} />
                 {t.exploitedBeforePatch ? <span className="visually-hidden"> (exploited before patch)</span> : null}
+                {t.thirdPartyVendor ? <span className="tag"> third-party component ({t.thirdPartyVendor})</span> : null}
               </th>
               <td>
                 <time dateTime={t.firstFixDate}>{t.firstFixDate}</time>

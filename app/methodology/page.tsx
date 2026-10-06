@@ -53,7 +53,8 @@ export default function Methodology() {
             ["Backport gap", TERMS.backportGap],
             ["No fix listed", TERMS.noFixListed],
             ["Branch ended", TERMS.branchEnded],
-            ["Branch released later", TERMS.laterMajor],
+            ["Fixed at branch release", TERMS.atBranchRelease],
+            ["Third-party component", TERMS.thirdParty],
             ["Disclosure lag", TERMS.disclosureLag],
           ] as const
         ).map(([term, def]) => (
@@ -67,9 +68,11 @@ export default function Methodology() {
       </dl>
 
       <h2 id="metrics">The three metrics</h2>
-      <h3>1. Exploited before patch (KEV proxy)</h3>
+      <h3>1. Exploited before patch</h3>
       <p>
-        For each exploited CVE: first fix date minus KEV date added. Positive means CISA had catalogued exploitation before any Apple patch existed.
+        Headline: how many exploited CVEs Apple itself described as &ldquo;may have been exploited&rdquo; when it released the fix, i.e.
+        attacked before a patch existed. How long before is not public. Secondary: for each exploited CVE in KEV, first fix date minus KEV date
+        added. Positive means CISA had catalogued exploitation before any Apple patch existed.
         For Apple this is rare; KEV usually follows the patch by days, and sometimes by years when exploitation is discovered later. The number is
         therefore a lagging proxy, not the start of exploitation, which is not public. Apple&apos;s own &ldquo;may have been exploited&rdquo; note
         is shown alongside: it means exploitation began before the patch, for an unknown length of time.
@@ -78,9 +81,9 @@ export default function Methodology() {
       <p>
         Per CVE and platform (iOS, iPadOS, macOS separately): find the earliest fix on any branch. Each branch that existed on that date is then
         classified as <em>fixed</em> (gap = its first fix minus the earliest fix), <em>no fix listed</em>, or <em>branch ended</em>. A branch
-        first released after the earliest fix is not counted. &ldquo;Older branches&rdquo; are those below the newest major version that existed on
-        the date of the earliest fix. Headline numbers use exploited CVEs only, where a missing backport is least likely to mean &ldquo;not
-        affected&rdquo;.
+        first released after the earliest fix is shown as <em>fixed at branch release</em> and is not counted. The headline reports one branch,
+        never a mix: the oldest branch still maintained on the data date (last security release under 180 days old), with its median and worst
+        gap, over exploited CVEs only, where a missing backport is least likely to mean &ldquo;not affected&rdquo;.
       </p>
       <h3>3. Disclosure lag</h3>
       <p>NVD published date minus the first fix date, over all CVEs in the window.</p>
@@ -104,8 +107,17 @@ export default function Methodology() {
         </li>
         <li>Missing NVD or KEV dates are shown as &ldquo;unknown&rdquo; and left out of medians, never estimated.</li>
         <li>
-          A branch with no update after the earliest fix is &ldquo;branch ended&rdquo;, not &ldquo;no fix listed&rdquo;, unless its last update is
-          under 180 days old: then its next update may simply not be due yet, and it stays &ldquo;no fix listed&rdquo; as of the data date.
+          A branch with no <em>security</em> release after the earliest fix is &ldquo;branch ended&rdquo;, not &ldquo;no fix listed&rdquo;, unless
+          its last security release is under 180 days old: then its next one may simply not be due yet, and it stays &ldquo;no fix listed&rdquo;
+          as of the data date. Updates without published CVE entries (e.g. iOS 12.5.8, January 2026, which Apple lists with no published CVE entries) do not keep a branch alive.
+        </li>
+        <li>
+          A branch first released after the earliest fix (e.g. a new major version) is &ldquo;fixed at branch release&rdquo;: listed if its
+          advisory names the CVE, otherwise assumed inherited. It is never counted as a backport gap or as missing a fix.
+        </li>
+        <li>
+          CVEs that CISA KEV files under a vendor other than Apple are labelled &ldquo;third-party component&rdquo;; they stay in all metrics,
+          because Apple users are exposed until Apple ships the fix.
         </li>
         <li>An older branch fixed before the newest one: the older branch sets the earliest fix date and the newest branch gets the gap.</li>
       </ul>

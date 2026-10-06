@@ -7,6 +7,7 @@ export interface ExportRow {
   exploited: boolean;
   exploited_before_patch: boolean;
   apple_exploited_note: boolean;
+  third_party_vendor: string | null;
   first_fix_date: string;
   kev_date_added: string | null;
   kev_window_days: number | null;
@@ -33,6 +34,7 @@ export function exportRows(timelines: CveTimeline[]): ExportRow[] {
           exploited: t.exploited,
           exploited_before_patch: t.exploitedBeforePatch,
           apple_exploited_note: t.appleExploitedNote,
+          third_party_vendor: t.thirdPartyVendor,
           first_fix_date: t.firstFixDate,
           kev_date_added: t.cve.kevDateAdded,
           kev_window_days: t.kevWindowDays,
@@ -41,8 +43,8 @@ export function exportRows(timelines: CveTimeline[]): ExportRow[] {
           platform: p.platform,
           branch: o.branch.name,
           branch_status: s.kind,
-          branch_fix_date: s.kind === "fixed" || s.kind === "later-major" ? s.fixDate : null,
-          branch_fix_release: s.kind === "fixed" || s.kind === "later-major" ? s.releaseId : null,
+          branch_fix_date: s.kind === "fixed" || s.kind === "fixed-at-branch-release" ? s.fixDate : null,
+          branch_fix_release: s.kind === "fixed" || s.kind === "fixed-at-branch-release" ? s.releaseId : null,
           gap_days: s.kind === "fixed" ? s.gapDays : null,
           older_branch: o.older,
         });
@@ -76,7 +78,7 @@ function cell(v: unknown): string {
 /** Plain RFC 4180 CSV. Provenance is repeated as columns so every row stays citable on its own. */
 export function toCsv(rows: ExportRow[], meta: { methodology_version: string; data_updated_at: string | null }): string {
   const cols: (keyof ExportRow)[] = [
-    "cve_id", "exploited", "exploited_before_patch", "apple_exploited_note", "first_fix_date", "kev_date_added", "kev_window_days",
+    "cve_id", "exploited", "exploited_before_patch", "apple_exploited_note", "third_party_vendor", "first_fix_date", "kev_date_added", "kev_window_days",
     "nvd_published", "disclosure_lag_days", "platform", "branch", "branch_status", "branch_fix_date", "branch_fix_release", "gap_days", "older_branch",
   ];
   const header = [...cols, "methodology_version", "data_updated_at"].join(",");

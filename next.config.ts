@@ -1,20 +1,13 @@
 import type { NextConfig } from "next";
 
+/**
+ * Static export: every page and export file is generated at build time into out/, then
+ * scripts/strip-js.ts removes all JavaScript. The site is rebuilt daily after ingestion
+ * (Vercel deploy hook). Response headers live in vercel.json, because a static export has no server.
+ */
 const config: NextConfig = {
-  poweredByHeader: false,
+  output: "export",
   reactStrictMode: true,
-  async headers() {
-    return [
-      {
-        source: "/:path*",
-        headers: [
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "no-referrer" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
-        ],
-      },
-    ];
-  },
 };
 
 export default config;

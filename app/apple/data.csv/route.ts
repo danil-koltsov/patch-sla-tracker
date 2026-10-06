@@ -1,7 +1,7 @@
 import { loadData } from "../../../lib/data.ts";
 import { csvResponse, exportEnvelope, exportRows, toCsv } from "../../../lib/export.ts";
 
-export const revalidate = 86400; // must be a literal; equals REVALIDATE_SECONDS
+export const dynamic = "force-static"; // emitted as a file by the static export
 
 export async function GET() {
   const { dataset, timelines } = await loadData();

@@ -5,8 +5,8 @@ import type { CveTimeline } from "../lib/metrics.ts";
 export function CveTimelineSvg({ t }: { t: CveTimeline }) {
   const rows = t.platforms.flatMap((p) =>
     p.outcomes
-      .filter((o) => o.status.kind === "fixed" || o.status.kind === "later-major")
-      .map((o) => ({ label: o.branch.name, date: (o.status as { fixDate: string }).fixDate, later: o.status.kind === "later-major" })),
+      .filter((o) => o.status.kind === "fixed" || o.status.kind === "fixed-at-branch-release")
+      .map((o) => ({ label: o.branch.name, date: (o.status as { fixDate: string }).fixDate, later: o.status.kind === "fixed-at-branch-release" })),
   );
   if (rows.length === 0) return null;
 
@@ -64,7 +64,7 @@ export function CveTimelineSvg({ t }: { t: CveTimeline }) {
           {end}
         </text>
       </svg>
-      <figcaption>Filled circle: first fix on that branch. Hollow circle: branch released after the earliest fix (not a backport).</figcaption>
+      <figcaption>Filled circle: first fix on that branch. Hollow circle: branch first released after the earliest fix, so it shipped with the fix (not a backport).</figcaption>
     </figure>
   );
 }

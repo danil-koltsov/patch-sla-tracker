@@ -41,4 +41,13 @@ Small decisions made without asking. Larger trade-offs are raised as questions i
 - Screen-reader structure, checked through the accessibility tree and DOM: tables have captions and `th scope`, and each SVG has `role="img"` with a title and a text description of every data point. **Not yet tested with a real screen reader (VoiceOver/NVDA).**
 - No-JS: all content is in the server HTML. Verified by stripping every `<script>`.
 - 404: unknown and malformed CVE IDs return HTTP 404.
-- **Open: JS budget.** The App Router ships about 130–170 KB of gzipped framework JS per page, even with zero client components. The budget is under 50 KB. A decision from the owner is needed.
+- ~~Open: JS budget.~~ Resolved in the Phase 1 review (option A, below).
+
+## Phase 1 review (owner, 2026-10-06)
+
+1. **JS budget: static export + strip.** `output: "export"`; `scripts/strip-js.ts` removes every script, JS chunk and RSC payload after `next build`, and fails the build if one survives. Result: 0 bytes of JS, 2 requests and 3–8 KB transferred per page. ISR is gone. The site is rebuilt daily by the Vercel deploy hook that the ingest workflow calls, and the workflow now fails if the hook secret is missing. Response headers moved to `vercel.json`, plus a CSP with no script sources. Only CVEs first fixed since 2023-01-01 get pages; the 404 page says so in words.
+2. **Fixed at branch release.** A branch first released after a CVE's earliest fix gets the status `fixed-at-branch-release`: *listed* if its advisory names the CVE, otherwise *inherited* (assumed fixed from the branch's first release). It is never counted as a gap or as "no fix listed". Note: this rule does **not** apply to the owner's example CVE-2026-86950 on iOS 27. iOS 27.0 shipped 2026-09-14, before the earliest fix (iOS 26.7.1, 2026-09-28), so iOS 27 existed when the fix shipped and stays "no fix listed" (iOS 27.0.1 shipped the same day with no CVE entries).
+3. **Maintained = security releases only.** A branch is maintained if it shipped a security release (one listing at least one CVE) on/after the earliest fix, or its last security release is under 180 days old on the data date. Updates without CVE entries (e.g. iOS 12.5.8, 2026-01-26) no longer keep a branch alive.
+4. **Metric 1 headline leads with the zero-day share** ("N of M exploited Apple flaws were attacked before a patch existed, per Apple"). The KEV lag is the secondary line.
+5. **Backport headline names one branch:** the oldest branch still maintained (last security release under 180 days old), excluding the newest branch, with its median and worst gap over exploited CVEs. The mixed "older branches" aggregate was removed.
+6. **Third-party label:** when the KEV `vendorProject` is not Apple (stored in `cves.kev_vendor_project`, migration 0002), the CVE is labelled "third-party component (<vendor>)". These CVEs stay in all metrics.

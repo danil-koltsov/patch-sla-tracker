@@ -15,11 +15,12 @@ Background: [docs/data-sources.md](docs/data-sources.md) (what the sources reall
 ## Layout
 
 ```
-app/                 Next.js App Router pages and export routes (server components only)
+app/                 Next.js App Router pages and export routes (server components only, statically exported)
 components/          Server-rendered UI pieces and static SVG charts
 lib/metrics.ts       The three metrics: pure functions, the only place the rules live
 lib/methodology.ts   Methodology version, window start, definitions shown on pages
-lib/data.ts          Loads the dataset from Supabase (PostgREST) or a local JSON snapshot
+lib/data.ts          Loads the dataset at build time from Supabase (PostgREST) or a local JSON snapshot
+scripts/strip-js.ts  Post-build: removes all JavaScript from the static export
 scripts/ingest/      Daily ingestion: Apple index + advisories, CISA KEV, NVD → Supabase
 supabase/migrations/ Schema, base-fact views, RLS
 tests/               Vitest: metric edge cases, parsers, schema + RLS (PGlite)
@@ -40,7 +41,7 @@ Build a local snapshot from the live sources without touching any database. The 
 npm run ingest -- --no-db --out data/snapshot.json
 ```
 
-Run the site against that snapshot:
+Run the site against that snapshot (dev mode; the production build is described under *Deploy*):
 
 ```bash
 DATA_SNAPSHOT=data/snapshot.json npm run dev
@@ -79,15 +80,27 @@ never reach Vercel or the browser. `tests/schema.test.ts` checks this against a 
 - Idempotent: every row is upserted with the run id, and rows the sources no longer contain are deleted afterwards.
 - Safety: if any table would shrink by more than 10%, the run fails and nothing is deleted. Re-run with `force` only after checking why.
 
-GitHub secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, optional `NVD_API_KEY`, optional `VERCEL_DEPLOY_HOOK_URL`.
+GitHub secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `VERCEL_DEPLOY_HOOK_URL`, optional `NVD_API_KEY`.
 
 ## Deploy on Vercel
 
-1. Import the GitHub repository in Vercel (framework: Next.js).
-2. Environment variables: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SITE_URL` (the public origin, used for canonical URLs).
-   Do **not** add the service role key.
-3. Pages are statically generated and revalidated daily (ISR, `revalidate = 86400`). To publish right after ingestion, create a
-   Deploy Hook and store it as the `VERCEL_DEPLOY_HOOK_URL` GitHub secret.
+The site is a **static export** that ships **no JavaScript**. `next build` writes every page and export file to `out/`, then
+`scripts/strip-js.ts` removes all `<script>` tags, JS chunks and RSC payloads. The build fails if any script is left.
+
+1. Import the GitHub repository in Vercel. `vercel.json` sets the framework to none, the build command to `npm run build`, the output
+   directory to `out/`, clean URLs, and the security headers (including a CSP that allows no scripts).
+2. Build-time environment variables: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SITE_URL` (the public origin, used for canonical
+   URLs). Do **not** add the service role key.
+3. Create a Deploy Hook (*Settings → Git → Deploy Hooks*) and store it as the `VERCEL_DEPLOY_HOOK_URL` GitHub secret. The daily
+   ingest workflow calls it after writing to Supabase; without it, new data never goes live, so the workflow fails loudly.
+
+Pages exist for every CVE first fixed since 2023-01-01. Any other address returns the 404 page, which explains that scope.
+
+Preview the exported site locally (clean URLs and the 404 page behave as they do on Vercel):
+
+```bash
+DATA_SNAPSHOT=data/snapshot.json npm run build && npm start
+```
 
 See `.env.example` for all variables. Never commit `.env*` files with values.
 
