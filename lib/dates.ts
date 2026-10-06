@@ -3,7 +3,9 @@ const DAY_MS = 86_400_000;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function isIsoDate(s: string): boolean {
-  return ISO_DATE.test(s) && !Number.isNaN(Date.parse(`${s}T00:00:00Z`));
+  if (!ISO_DATE.test(s)) return false;
+  const t = Date.parse(`${s}T00:00:00Z`);
+  return !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === s; // rejects 2024-02-31
 }
 
 /** Whole days from `from` to `to` (both "YYYY-MM-DD", UTC). Positive when `to` is later. */
