@@ -73,13 +73,15 @@ function cell(v: unknown): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-export function toCsv(rows: ExportRow[], header: Record<string, unknown>): string {
+/** Plain RFC 4180 CSV. Provenance is repeated as columns so every row stays citable on its own. */
+export function toCsv(rows: ExportRow[], meta: { methodology_version: string; data_updated_at: string | null }): string {
   const cols: (keyof ExportRow)[] = [
     "cve_id", "exploited", "exploited_before_patch", "apple_exploited_note", "first_fix_date", "kev_date_added", "kev_window_days",
     "nvd_published", "disclosure_lag_days", "platform", "branch", "branch_status", "branch_fix_date", "branch_fix_release", "gap_days", "older_branch",
   ];
-  const comments = Object.entries(header).map(([k, v]) => `# ${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`);
-  return [...comments, cols.join(","), ...rows.map((r) => cols.map((c) => cell(r[c])).join(","))].join("\n") + "\n";
+  const header = [...cols, "methodology_version", "data_updated_at"].join(",");
+  const tail = [cell(meta.methodology_version), cell(meta.data_updated_at)].join(",");
+  return [header, ...rows.map((r) => `${cols.map((c) => cell(r[c])).join(",")},${tail}`)].join("\r\n") + "\r\n";
 }
 
 export function csvResponse(body: string, filename: string): Response {

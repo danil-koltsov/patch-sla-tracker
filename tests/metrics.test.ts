@@ -180,14 +180,17 @@ describe("window and aggregates", () => {
 
 describe("export", async () => {
   const { exportRows, toCsv } = await import("../lib/export.ts");
-  it("writes unknowns as empty CSV cells and quotes commas", () => {
+  it("writes unknowns as empty cells and provenance columns on every row", () => {
     const f = base();
     f.release("iOS", "17.1", "2023-10-25", ["CVE-2023-1"]);
     const rows = exportRows(allTimelines(buildIndex(f.dataset())).filter((t) => t.id === "CVE-2023-1"));
-    const csv = toCsv(rows, { note: "a,b" });
-    expect(csv.split("\n")[0]).toBe("# note: a,b");
-    const line = csv.split("\n").find((l) => l.startsWith("CVE-2023-1,"))!;
+    const csv = toCsv(rows, { methodology_version: "1.0.0", data_updated_at: "2026-10-06T00:00:00Z" });
+    const lines = csv.trimEnd().split("\r\n");
+    expect(lines[0]!.startsWith("cve_id,")).toBe(true);
+    expect(lines[0]!.endsWith(",methodology_version,data_updated_at")).toBe(true);
+    const line = lines.find((l) => l.startsWith("CVE-2023-1,"))!;
     expect(line).toContain(",,"); // null KEV date
+    expect(line.endsWith(",1.0.0,2026-10-06T00:00:00Z")).toBe(true);
   });
 });
 

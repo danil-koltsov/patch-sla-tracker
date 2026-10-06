@@ -73,14 +73,14 @@ export default async function CvePage({ params }: { params: Promise<{ id: string
         <dt>First fix</dt>
         <dd>
           <time dateTime={t.firstFixDate}>{t.firstFixDate}</time> (
-          {t.listings
-            .filter((l) => l.release.releaseDate === t.firstFixDate)
-            .map((l, i) => (
-              <span key={l.release.id}>
+          {[...new Map(t.listings.filter((l) => l.release.releaseDate === t.firstFixDate).map((l) => [l.release.name, l.release])).values()].map(
+            (r, i) => (
+              <span key={r.id}>
                 {i > 0 ? ", " : ""}
-                {l.release.advisoryUrl ? <a href={l.release.advisoryUrl}>{l.release.name}</a> : l.release.name}
+                {r.advisoryUrl ? <a href={r.advisoryUrl}>{r.name}</a> : r.name}
               </span>
-            ))}
+            ),
+          )}
           )
         </dd>
         <dt>CISA KEV added</dt>
@@ -164,6 +164,7 @@ export default async function CvePage({ params }: { params: Promise<{ id: string
           <thead>
             <tr>
               <th scope="col">Release</th>
+              <th scope="col">Branch</th>
               <th scope="col">Released</th>
               <th scope="col">Entry added</th>
               <th scope="col">Exploited note</th>
@@ -173,6 +174,7 @@ export default async function CvePage({ params }: { params: Promise<{ id: string
             {t.listings.map((l) => (
               <tr key={l.release.id}>
                 <th scope="row">{l.release.advisoryUrl ? <a href={l.release.advisoryUrl}>{l.release.name}</a> : l.release.name}</th>
+                <td>{l.branch.name}</td>
                 <td>
                   <time dateTime={l.release.releaseDate}>{l.release.releaseDate}</time>
                   {l.release.rereleaseDates.length ? <span className="muted"> (re-released {l.release.rereleaseDates.join(", ")})</span> : null}

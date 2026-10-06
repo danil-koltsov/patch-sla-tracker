@@ -85,7 +85,9 @@ export default async function ApplePage() {
                 </p>
                 <TableScroll label={`${platform} backport gaps by branch`}>
                   <table>
-                    <caption>{platform}: backport gap per branch, exploited CVEs</caption>
+                    <caption>
+                      {platform}: backport gap per branch, exploited CVEs. Branches that had ended for every CVE are omitted (see export).
+                    </caption>
                     <thead>
                       <tr>
                         <th scope="col">Branch</th>
@@ -110,7 +112,7 @@ export default async function ApplePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {s.rows.map((r) => (
+                      {s.rows.filter((r) => r.fixed.n > 0 || r.noFixListed > 0).map((r) => (
                         <tr key={r.branch.id}>
                           <th scope="row">{r.branch.name}</th>
                           <td className="num">{r.fixed.n}</td>
