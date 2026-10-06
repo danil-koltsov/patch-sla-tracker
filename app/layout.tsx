@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description:
     "How long Apple users stay exposed to security flaws: backport delays between OS branches, exploited-vulnerability timelines, and disclosure lag. Sourced from Apple, CISA KEV and NVD.",
   robots: { index: true, follow: true },
+  // No images, not even a favicon: an empty data URL stops the browser's /favicon.ico request.
+  icons: { icon: "data:," },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

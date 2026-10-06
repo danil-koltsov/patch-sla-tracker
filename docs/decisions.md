@@ -29,3 +29,16 @@ Small decisions made without asking. Larger trade-offs are raised as questions i
 - 2026-10-06: Font: the system monospace stack. No font is downloaded, which meets "at most one self-hosted font" with zero.
 - 2026-10-06: Medians of an even count are the mean of the two middle values, shown with at most one decimal.
 - 2026-10-06: Internal links are plain `<a>`, not `next/link`. This avoids the client router and prefetching; pages are static documents and full page loads are cheap.
+- 2026-10-06: The site has no favicon. `icons: { icon: "data:," }` stops the `/favicon.ico` request, which keeps the "no images" rule and leaves the console clean.
+- 2026-10-06: CSV exports are plain RFC 4180, without `#` comment lines, which spreadsheets mis-import. `methodology_version` and `data_updated_at` are repeated as columns on every row.
+- 2026-10-06: A branch is "ended" only if it shipped nothing after the earliest fix **and** nothing in the last 180 days (`ACTIVE_BRANCH_DAYS`). Before this rule, iOS 27 was mislabelled "ended" for a CVE fixed the same day as iOS 27.0.1.
+- 2026-10-06: NVD single-CVE lookups that keep failing become "unknown" and are listed in the run warnings. The run is not aborted.
+
+## Phase 1 verification (2026-10-06, local production build, real snapshot)
+
+- Lighthouse 13.5 (headless Chrome) on `/`, `/apple`, `/cve/CVE-2025-24085`, `/methodology`: Accessibility 100, Best Practices 100, SEO 100, Performance 99–100.
+- Keyboard: a skip link appears on the first Tab, the focus ring is visible, tab order follows reading order, and scrollable tables are focusable regions.
+- Screen-reader structure, checked through the accessibility tree and DOM: tables have captions and `th scope`, and each SVG has `role="img"` with a title and a text description of every data point. **Not yet tested with a real screen reader (VoiceOver/NVDA).**
+- No-JS: all content is in the server HTML. Verified by stripping every `<script>`.
+- 404: unknown and malformed CVE IDs return HTTP 404.
+- **Open: JS budget.** The App Router ships about 130–170 KB of gzipped framework JS per page, even with zero client components. The budget is under 50 KB. A decision from the owner is needed.
