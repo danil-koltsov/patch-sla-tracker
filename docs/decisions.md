@@ -28,3 +28,4 @@ Small decisions made without asking. Larger trade-offs are raised as questions i
 - 2026-10-06: "Exploited" = in CISA KEV **or** Apple's advisory says "may have been (actively) exploited". Red is used only when exploitation is documented before a patch existed: Apple's note at release, or KEV `dateAdded` earlier than the first fix.
 - 2026-10-06: Font: the system monospace stack. No font is downloaded, which meets "at most one self-hosted font" with zero.
 - 2026-10-06: Medians of an even count are the mean of the two middle values, shown with at most one decimal.
+- 2026-10-06: Internal links are plain `<a>`, not `next/link`. This avoids the client router and prefetching; pages are static documents and full page loads are cheap.

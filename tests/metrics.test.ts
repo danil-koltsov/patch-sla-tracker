@@ -177,3 +177,16 @@ describe("window and aggregates", () => {
     expect(ipad17.older).toBe(true);
   });
 });
+
+describe("export", async () => {
+  const { exportRows, toCsv } = await import("../lib/export.ts");
+  it("writes unknowns as empty CSV cells and quotes commas", () => {
+    const f = base();
+    f.release("iOS", "17.1", "2023-10-25", ["CVE-2023-1"]);
+    const rows = exportRows(allTimelines(buildIndex(f.dataset())).filter((t) => t.id === "CVE-2023-1"));
+    const csv = toCsv(rows, { note: "a,b" });
+    expect(csv.split("\n")[0]).toBe("# note: a,b");
+    const line = csv.split("\n").find((l) => l.startsWith("CVE-2023-1,"))!;
+    expect(line).toContain(",,"); // null KEV date
+  });
+});
