@@ -142,11 +142,11 @@ export default async function ApplePage() {
       })}
 
       <h2 id="exploited">2. Exploited before patch</h2>
-      <p>Of the flaws known to be exploited, how many were attacked before any patch existed?</p>
+      <p>Of the flaws known to be exploited, how many were possibly already under attack when Apple shipped the fix?</p>
       <Def term="Exploited">{TERMS.exploited}</Def>
       <p>
-        <strong className="exploited">{ex.appleNote}</strong> of {ex.exploited} exploited Apple flaws were attacked before a patch existed, per
-        Apple&apos;s own advisory (&ldquo;may have been exploited&rdquo;). How long before is not public.
+        <strong className="exploited">{ex.appleNote}</strong> of {ex.exploited} exploited Apple flaws were, per Apple, possibly already under
+        attack when the fix shipped (the advisory says &ldquo;may have been exploited&rdquo;). How long before is not public.
       </p>
       <Def term="KEV date added (proxy)">{TERMS.kevProxy}</Def>
       <p>

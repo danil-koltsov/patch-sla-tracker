@@ -256,7 +256,7 @@ function stat(rows: { days: number; cveId: string }[]): Stat {
 /** Metric 1 — exploited CVEs: Apple's zero-day note, and KEV dateAdded relative to the first fix. */
 export interface ExploitedSummary {
   exploited: number; // exploited CVEs in window
-  appleNote: number; // of which Apple said "may have been exploited" (attacked before a patch existed)
+  appleNote: number; // of which Apple said "may have been exploited" (possibly under attack when the fix shipped)
   withKev: number;
   kevBeforePatch: number; // KEV dateAdded earlier than the first fix
   unknownKev: number; // exploited per Apple, not (yet) in KEV

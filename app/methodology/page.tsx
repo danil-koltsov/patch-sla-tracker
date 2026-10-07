@@ -75,7 +75,7 @@ export default function Methodology() {
       <h3>1. Exploited before patch</h3>
       <p>
         Headline: how many exploited CVEs Apple itself described as &ldquo;may have been exploited&rdquo; when it released the fix, i.e.
-        attacked before a patch existed. How long before is not public. Secondary: for each exploited CVE in KEV, first fix date minus KEV date
+        possibly already under attack when the fix shipped. How long before is not public. Secondary: for each exploited CVE in KEV, first fix date minus KEV date
         added. Positive means CISA had catalogued exploitation before any Apple patch existed.
         For Apple this is rare; KEV usually follows the patch by days, and sometimes by years when exploitation is discovered later. The number is
         therefore a lagging proxy, not the start of exploitation, which is not public. Apple&apos;s own &ldquo;may have been exploited&rdquo; note

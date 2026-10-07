@@ -60,8 +60,8 @@ export default async function Home() {
 
       <section className="headline-block" aria-labelledby="h-exploited">
         <p className="headline" id="h-exploited">
-          <strong className="exploited">{ex.appleNote}</strong> of {ex.exploited} exploited Apple flaws were attacked before a patch existed, per
-          Apple.
+          <strong className="exploited">{ex.appleNote}</strong> of {ex.exploited} exploited Apple flaws were, per Apple, possibly already under
+          attack when the fix shipped.
         </p>
         <p className="muted">
           CISA&apos;s exploited-vulnerability catalog listed them a median of {formatDays(ex.kevAfterPatch.median)} after Apple&apos;s first patch;{" "}
