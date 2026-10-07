@@ -1,14 +1,14 @@
 /**
- * Daily ingestion. Usage:
- *   node scripts/ingest/run.ts                 # write to Supabase (needs SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY)
- *   node scripts/ingest/run.ts --no-db --out data/snapshot.json
- *   node scripts/ingest/run.ts --force         # skip the shrink guard
+ * Ingestion (every 6 hours in GitHub Actions). Rewrites data/snapshot.json only when the data changed;
+ * the workflow commits that file, and the push deploys the site. Usage:
+ *   node scripts/ingest/run.ts                  # update data/snapshot.json
+ *   node scripts/ingest/run.ts --out other.json
+ *   node scripts/ingest/run.ts --force          # skip the shrink guard
  */
 import { createHash } from "node:crypto";
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { parseArgs } from "node:util";
-import { METHODOLOGY_VERSION } from "../../lib/methodology.ts";
 import { daysBetween } from "../../lib/dates.ts";
 import { parseAdvisory, type Advisory } from "./apple-advisory.ts";
 import { parseIndex, type IndexRow } from "./apple-index.ts";
@@ -18,7 +18,8 @@ import { allTimelines, buildIndex } from "../../lib/metrics.ts";
 import { cachedGet, DAY, HOUR } from "./http.ts";
 import { fetchKev } from "./kev.ts";
 import { fetchMissing, rememberPublished, syncNvd } from "./nvd.ts";
-import { SupabaseWriter } from "./supabase.ts";
+import { serializeDataset, SNAPSHOT_PATH } from "../../lib/snapshot.ts";
+import type { Dataset } from "../../lib/types.ts";
 
 const INDEX_PAGES = [
   "https://support.apple.com/en-us/100100", // current
@@ -40,7 +41,7 @@ const log = (s: string) => console.log(`[${new Date().toISOString().slice(11, 19
 
 async function main() {
   const { values: args } = parseArgs({
-    options: { "no-db": { type: "boolean", default: false }, out: { type: "string" }, force: { type: "boolean", default: false } },
+    options: { out: { type: "string", default: SNAPSHOT_PATH }, force: { type: "boolean", default: false } },
   });
   const updatedAt = new Date().toISOString();
   const today = updatedAt.slice(0, 10);
@@ -102,53 +103,34 @@ async function main() {
   if (missing.failed.length) warnings.push(`NVD lookup failed (published date unknown) for ${missing.failed.length} CVEs: ${missing.failed.join(", ")}`);
   for (const w of warnings) log(`warning: ${w}`);
 
-  if (args.out) {
-    // Rewrite the snapshot only when its content changed, so meta.updatedAt is "data last changed"
-    // and an unchanged run leaves the file byte-identical (empty diff).
-    const prev = await readFile(args.out, "utf8").then((s) => JSON.parse(s) as typeof dataset).catch(() => null);
-    const changed = !prev || contentHashOf(prev) !== contentHash;
-    if (args["no-db"]) await setOutput("changed", String(changed));
-    if (changed) {
-      await mkdir(dirname(args.out), { recursive: true });
-      await writeFile(args.out, JSON.stringify(dataset));
-      log(`wrote ${args.out} (data changed)`);
-    } else {
-      log(`${args.out} unchanged; not rewritten (keeps last-changed time ${prev.meta.updatedAt})`);
-    }
-  }
-  if (args["no-db"]) return;
-
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required (or pass --no-db)");
-  const db = new SupabaseWriter(url, key);
-
-  const last = await db.lastRun();
-  const previous = last?.counts ?? null;
-  if (last?.content_hash === contentHash) {
-    const run = await db.startRun(METHODOLOGY_VERSION);
-    await db.finishRun(run, "ok", { counts, warnings, kev_catalog_version: kev.catalogVersion, content_hash: contentHash, changed: false });
-    await setOutput("changed", "false");
-    log(`supabase: run ${run} ok, no changes since the last run; tables not rewritten`);
-    return;
-  }
-  if (previous && !args.force) {
+  // Rewrite the snapshot only when its content changed, so meta.updatedAt is "data last changed"
+  // and an unchanged run leaves the file byte-identical (empty git diff = nothing to deploy).
+  const out = args.out!;
+  const prev = await readFile(out, "utf8").then((t) => JSON.parse(t) as Dataset).catch(() => null);
+  if (prev && !args.force) {
+    const before: Record<string, number> = {
+      branches: prev.branches.length,
+      releases: prev.releases.length,
+      cves: prev.cves.length,
+      release_cves: prev.releaseCves.length,
+    };
     for (const [k, v] of Object.entries(counts)) {
-      const before = previous[k];
-      if (before && v < before * (1 - MAX_SHRINK)) throw new Error(`${k} would shrink from ${before} to ${v}; refusing to write (use --force after checking)`);
+      const b = before[k];
+      if (b && v < b * (1 - MAX_SHRINK)) throw new Error(`${k} would shrink from ${b} to ${v}; refusing to write (use --force after checking)`);
     }
   }
-
-  const run = await db.startRun(METHODOLOGY_VERSION);
-  try {
-    await db.write(dataset, run);
-    await db.finishRun(run, "ok", { counts, warnings, kev_catalog_version: kev.catalogVersion, content_hash: contentHash, changed: true });
-    await setOutput("changed", "true");
-    log(`supabase: run ${run} ok, data changed`);
-  } catch (e) {
-    await db.finishRun(run, "failed", { warnings: [...warnings, String(e)] }).catch(() => {});
-    throw e;
+  const changed = !prev || contentHashOf(prev) !== contentHash;
+  // Same data: keep the previous meta (timestamp, KEV catalog version) so only a format change can produce a diff.
+  const text = serializeDataset(changed || !prev ? dataset : { ...dataset, meta: prev.meta });
+  const existing = await readFile(out, "utf8").catch(() => null);
+  if (text !== existing) {
+    await mkdir(dirname(out), { recursive: true });
+    await writeFile(out, text);
+    log(`wrote ${out} (${changed ? "data changed" : "format only"})`);
+  } else {
+    log(`${out} unchanged (data last changed ${prev?.meta.updatedAt})`);
   }
+  await setOutput("changed", String(text !== existing));
 }
 
 /** Hash of the data itself, excluding meta (timestamps), so it changes only when the data does. */
@@ -156,7 +138,7 @@ function contentHashOf(ds: { branches: unknown; releases: unknown; releaseCves: 
   return createHash("sha256").update(JSON.stringify({ b: ds.branches, r: ds.releases, l: ds.releaseCves, c: ds.cves })).digest("hex");
 }
 
-/** Step output for GitHub Actions (e.g. `changed=true` triggers the site rebuild). */
+/** Step output for GitHub Actions (informational; the workflow commits when `git diff data/` is non-empty). */
 async function setOutput(name: string, value: string): Promise<void> {
   if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `${name}=${value}\n`);
 }

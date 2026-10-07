@@ -269,3 +269,17 @@ describe("third-party components", () => {
     expect(exploitedSummary(allTimelines(idx)).thirdParty).toBe(1);
   });
 });
+
+describe("snapshot format", async () => {
+  const { serializeDataset } = await import("../lib/snapshot.ts");
+  it("round-trips and puts one record per line", () => {
+    const f = base();
+    f.release("iOS", "17.1", "2023-10-25", ["CVE-2023-1"]);
+    const ds = f.dataset();
+    const text = serializeDataset(ds);
+    expect(JSON.parse(text)).toEqual(ds);
+    const lines = text.split("\n");
+    expect(lines.filter((l) => l.startsWith('{"releaseId":')).length).toBe(ds.releaseCves.length);
+    expect(serializeDataset(JSON.parse(text))).toBe(text); // deterministic
+  });
+});

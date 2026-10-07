@@ -10,8 +10,9 @@ on:
         type: boolean
         default: false
 
+# Commits data/snapshot.json to main; Vercel's Git integration deploys the push.
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ingest
@@ -21,35 +22,39 @@ jobs:
   ingest:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    env:
-      HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: main
       - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Restore HTTP cache
+      - name: Restore HTTP cache and NVD state
         uses: actions/cache@v4
         with:
-          path: .cache/http
-          key: http-${{ github.run_id }}
-          restore-keys: http-
-      - name: Ingest Apple, KEV and NVD into Supabase
-        id: ingest
+          path: .cache
+          key: ingest-${{ github.run_id }}
+          restore-keys: ingest-
+      - name: Ingest Apple, KEV and NVD into data/snapshot.json
         run: node scripts/ingest/run.ts ${{ inputs.force && '--force' || '' }}
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-      # The site is a static export: new data goes live only through this rebuild,
-      # which runs only when the ingested data changed.
-      - name: Trigger Vercel rebuild
-        if: steps.ingest.outputs.changed == 'true'
+      # "Changed" is defined by git: the snapshot is rewritten only when the data changed.
+      - name: Commit and push if data changed
         run: |
-          if [ -z "$HOOK" ]; then
-            echo "::error::VERCEL_DEPLOY_HOOK_URL is not set; data was ingested but the site will not be rebuilt."
-            exit 1
+          if git diff --quiet -- data/; then
+            echo "No data changes; nothing to commit or deploy."
+            exit 0
           fi
-          curl -fsS -X POST "$HOOK" > /dev/null
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git commit -m "data: update snapshot ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            sleep $((attempt * 10))
+          done
+          echo "::error::Could not push the data commit to main."
+          exit 1

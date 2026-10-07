@@ -19,7 +19,7 @@ Small decisions made without asking. Larger trade-offs are raised as questions i
 
 - 2026-10-06: Branch = (platform, major), where platform is iOS, iPadOS or macOS. A combined release "iOS X and iPadOS X" creates one release row per platform. iPadOS 17 (iPad-only after Dec 2024) is therefore its own branch, and its history before Dec 2024 comes from the combined releases.
 - 2026-10-06: Metric logic lives in one place: pure TypeScript in `lib/metrics.ts`, unit-tested. SQL views only expose the base facts (per-CVE-per-branch first fix, branch spans). The rules are not written twice in SQL and TS.
-- 2026-10-06: No Supabase SDK. The app and ingestion talk to PostgREST over `fetch`, which avoids one dependency and its transitive tree.
+- 2026-10-06: No Supabase SDK. The app and ingestion talk to PostgREST over `fetch`, which avoids one dependency and its transitive tree. *(Superseded 2026-10-07: Supabase was removed; see "Data in git".)*
 - 2026-10-06: Ingestion scripts run on Node ≥ 23.6 native TypeScript type stripping (`node scripts/ingest/run.ts`), so there is no `tsx`/`ts-node` dependency. Imports therefore use explicit `.ts` extensions.
 - 2026-10-06: Letter-suffix releases are their own rows (`kind = rsr|bsi`). A CVE first fixed by an RSR uses the RSR date. Withdrawn RSRs ((a) replaced by (c)) still count, because the fix shipped to devices.
 - 2026-10-06: Re-releases (the same name listed twice in Apple's index) are one release. The fix date is the earliest date; the later dates are kept in `rerelease_dates`.
@@ -67,4 +67,13 @@ Small decisions made without asking. Larger trade-offs are raised as questions i
 - The footer label is now **"Data last changed"**. It shows the time of the ingestion run in which the data last changed (`YYYY-MM-DD HH:MM UTC`, with a machine-readable `datetime`). The next line says that sources are checked every 6 hours.
 - The tiered re-fetch schedule and the content hash stay as they are.
 - A snapshot (`--out`) is rewritten only when the content hash differs from the file on disk. An unchanged run leaves it byte-identical, so a diff of `data/` is empty exactly when nothing changed, and `meta.updatedAt` remains the last-changed time.
-- In Supabase, `v_last_ingest` (migration 0004) returns the latest successful run with `changed = true`. Runs recorded before change tracking existed count as changes.
+- ~~In Supabase, `v_last_ingest` (migration 0004) returns the latest successful run with `changed = true`.~~ Superseded: Supabase was removed (below).
+
+## Data in git (owner, 2026-10-07)
+
+- **Git replaces Supabase**, against the brief's fixed stack, by the owner's decision. The dataset is `data/snapshot.json`, committed to the repository. Removed: the Supabase reader and writer, all migrations, the PGlite schema/RLS tests, the `@electric-sql/pglite` dev dependency, and every Supabase or deploy-hook secret. The site builds from the committed file and needs no runtime or build secrets.
+- **Publishing**: the ingest workflow (`contents: write`) commits `data/` to `main` as `github-actions[bot]` when `git diff data/` is non-empty. Vercel's Git integration deploys the push, so no deploy hook is needed. The push retries with `pull --rebase`, in case a human pushed at the same time.
+- **"Changed" = non-empty `data/` diff.** The content hash decides whether the file is rewritten. On an unchanged run the previous `meta` (timestamp, KEV catalog version) is kept, so the file stays byte-identical. A pure format change would still produce a diff and a deploy, which is acceptable because it is rare and visible in review.
+- Snapshot format (small decision): deterministic JSON with one record per line, so diffs name the changed records, and git's delta compression keeps history small (1.7 MB raw, about 60 KB gzipped).
+- Shrink guard: it now compares counts with the committed snapshot. If any of them would drop by more than 10%, nothing is written.
+- Trade-offs accepted: the dataset is public in the repository, which suits a public site. The run history now lives in Actions logs plus `git log -- data/`, instead of an `ingest_runs` table. A protected `main` must allow `github-actions[bot]` to push.
