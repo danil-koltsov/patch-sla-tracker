@@ -20,7 +20,7 @@ export async function DataFooter() {
     <footer className="site">
       <div className="wrap">
         <p>
-          Data last updated: <time dateTime={updatedIso}>{updated}</time>
+          Data last changed: <time dateTime={updatedIso}>{updated}</time>
           {kev ? ` · CISA KEV catalog ${kev}` : ""} · <a href="/methodology">Methodology</a> v{METHODOLOGY_VERSION}
         </p>
         <p>Sources are checked every 6 hours; the site is rebuilt when they change.</p>

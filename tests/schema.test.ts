@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { beforeAll, describe, expect, it } from "vitest";
 
-const migrations = ["0001_init.sql", "0002_kev_vendor.sql", "0003_ingest_change_tracking.sql"].map((f) => readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), "utf8"));
+const migrations = ["0001_init.sql", "0002_kev_vendor.sql", "0003_ingest_change_tracking.sql", "0004_last_changed_view.sql"].map((f) => readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), "utf8"));
 let db: PGlite;
 
 beforeAll(async () => {
@@ -47,13 +47,23 @@ describe("schema", () => {
     await expect(db.exec(`insert into branches (id, platform, major, name) values ('x','watchOS',1,'x')`)).rejects.toThrow();
   });
 
+  it("v_last_ingest returns the last run that changed data, not the last check", async () => {
+    await db.exec(`
+      insert into ingest_runs (methodology_version, status, finished_at, changed) values
+        ('1.0.0', 'ok', now() + interval '1 hour', true),
+        ('1.0.0', 'ok', now() + interval '7 hours', false);
+    `);
+    const r = await db.query<{ hours: number }>(`select round(extract(epoch from finished_at - now()) / 3600)::int as hours from v_last_ingest`);
+    expect(r.rows[0]!.hours).toBe(1);
+  });
+
   describe("as anon", () => {
     it("can read data and only successful ingest runs", async () => {
       await db.exec("set role anon");
       try {
         expect((await db.query(`select * from releases`)).rows).toHaveLength(4);
         expect((await db.query(`select * from v_cve_branch_first_fix`)).rows).toHaveLength(2);
-        expect((await db.query(`select * from ingest_runs`)).rows).toHaveLength(1);
+        expect((await db.query(`select * from ingest_runs where status <> 'ok'`)).rows).toHaveLength(0); // failed runs hidden
         expect((await db.query(`select * from v_last_ingest`)).rows).toHaveLength(1);
       } finally {
         await db.exec("reset role");

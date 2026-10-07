@@ -87,8 +87,9 @@ What each run re-reads:
 
 - Caching: responses live in `.cache/http`, NVD state in `.cache/nvd-state.json`. Both are restored between Actions runs. If the
   cache is lost, the next run does a full NVD sync.
-- Change detection: each run hashes the dataset (without timestamps). If nothing changed, the tables are not rewritten and the site
-  is not rebuilt. The run is still recorded in `ingest_runs` with `changed = false`.
+- Change detection: each run hashes the dataset (without timestamps). If nothing changed, the tables are not rewritten, a
+  `--out` snapshot stays byte-identical (so a `data/` diff is empty), and the site is not rebuilt. The run is still recorded in
+  `ingest_runs` with `changed = false`. The footer shows "Data last changed": the time of the last run that changed the data.
 - Rate limits: Apple is paced at 1 request per 1.5 s. NVD is paced at 1 request per 6.5 s without a key, or 0.7 s with `NVD_API_KEY`.
 - Idempotent: every row is upserted with the run id, and rows the sources no longer contain are deleted afterwards.
 - Safety: if any table would shrink by more than 10%, the run fails and nothing is deleted. Re-run with `force` only after checking why.

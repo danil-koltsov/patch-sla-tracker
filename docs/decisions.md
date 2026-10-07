@@ -60,4 +60,11 @@ Small decisions made without asking. Larger trade-offs are raised as questions i
   - NVD keeps a state file (`.cache/nvd-state.json`) with published dates. Incremental runs query `lastModStartDate` with 1 hour of overlap, which takes 1–2 requests. A full Apple-CNA resync runs weekly, or whenever the state is missing or older than 100 days (NVD allows at most 120 days per window).
   - Advisories 90–400 days old are re-read daily and older ones monthly. Entries have been added up to 8 months after release, so a hard 90-day cutoff would miss some.
   - Each run hashes the dataset content. When the data is unchanged, the run records `changed = false`, skips table writes, and does **not** trigger a Vercel rebuild. Rebuilding four times a day with nothing to show would only waste builds (principle 9).
-  - "Data last updated" is the timestamp of the ingestion run behind the published build, shown as `YYYY-MM-DD HH:MM UTC` with a machine-readable `datetime`. The footer also says that sources are checked every 6 hours and the site is rebuilt when they change.
+  - ~~"Data last updated"~~ is superseded below by "Data last changed".
+
+## "Data last changed" (owner, 2026-10-07)
+
+- The footer label is now **"Data last changed"**. It shows the time of the ingestion run in which the data last changed (`YYYY-MM-DD HH:MM UTC`, with a machine-readable `datetime`). The next line says that sources are checked every 6 hours.
+- The tiered re-fetch schedule and the content hash stay as they are.
+- A snapshot (`--out`) is rewritten only when the content hash differs from the file on disk. An unchanged run leaves it byte-identical, so a diff of `data/` is empty exactly when nothing changed, and `meta.updatedAt` remains the last-changed time.
+- In Supabase, `v_last_ingest` (migration 0004) returns the latest successful run with `changed = true`. Runs recorded before change tracking existed count as changes.

@@ -97,22 +97,24 @@ async function main() {
     release_cves: dataset.releaseCves.length,
   };
   // Content hash (without the timestamp) decides whether anything changed and the site needs a rebuild.
-  const contentHash = createHash("sha256")
-    .update(JSON.stringify({ b: dataset.branches, r: dataset.releases, l: dataset.releaseCves, c: dataset.cves }))
-    .digest("hex");
+  const contentHash = contentHashOf(dataset);
   log(`dataset: ${JSON.stringify(counts)} hash ${contentHash.slice(0, 12)}`);
   if (missing.failed.length) warnings.push(`NVD lookup failed (published date unknown) for ${missing.failed.length} CVEs: ${missing.failed.join(", ")}`);
   for (const w of warnings) log(`warning: ${w}`);
 
   if (args.out) {
+    // Rewrite the snapshot only when its content changed, so meta.updatedAt is "data last changed"
+    // and an unchanged run leaves the file byte-identical (empty diff).
     const prev = await readFile(args.out, "utf8").then((s) => JSON.parse(s) as typeof dataset).catch(() => null);
-    const prevHash = prev
-      ? createHash("sha256").update(JSON.stringify({ b: prev.branches, r: prev.releases, l: prev.releaseCves, c: prev.cves })).digest("hex")
-      : null;
-    if (args["no-db"]) await setOutput("changed", String(prevHash !== contentHash));
-    await mkdir(dirname(args.out), { recursive: true });
-    await writeFile(args.out, JSON.stringify(dataset));
-    log(`wrote ${args.out}`);
+    const changed = !prev || contentHashOf(prev) !== contentHash;
+    if (args["no-db"]) await setOutput("changed", String(changed));
+    if (changed) {
+      await mkdir(dirname(args.out), { recursive: true });
+      await writeFile(args.out, JSON.stringify(dataset));
+      log(`wrote ${args.out} (data changed)`);
+    } else {
+      log(`${args.out} unchanged; not rewritten (keeps last-changed time ${prev.meta.updatedAt})`);
+    }
   }
   if (args["no-db"]) return;
 
@@ -147,6 +149,11 @@ async function main() {
     await db.finishRun(run, "failed", { warnings: [...warnings, String(e)] }).catch(() => {});
     throw e;
   }
+}
+
+/** Hash of the data itself, excluding meta (timestamps), so it changes only when the data does. */
+function contentHashOf(ds: { branches: unknown; releases: unknown; releaseCves: unknown; cves: unknown }): string {
+  return createHash("sha256").update(JSON.stringify({ b: ds.branches, r: ds.releases, l: ds.releaseCves, c: ds.cves })).digest("hex");
 }
 
 /** Step output for GitHub Actions (e.g. `changed=true` triggers the site rebuild). */

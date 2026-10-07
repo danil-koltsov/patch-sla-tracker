@@ -43,7 +43,7 @@ export interface Cve {
 }
 
 export interface DatasetMeta {
-  updatedAt: string; // ISO timestamp of the last successful ingestion
+  updatedAt: string; // ISO timestamp of the ingestion run in which the data last changed
   kevCatalogVersion: string | null;
 }
 
