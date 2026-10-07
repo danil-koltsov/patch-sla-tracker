@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-const CACHE_DIR = process.env.INGEST_CACHE_DIR ?? ".cache/http";
+export const CACHE_DIR = process.env.INGEST_CACHE_DIR ?? ".cache/http";
 const USER_AGENT = "patch-sla-tracker-ingest/1.0 (daily, cached; open-source research project)";
 
 interface Meta {
@@ -30,6 +30,8 @@ export interface FetchOptions {
   headers?: Record<string, string>;
   /** Cache 404s too (for "not in NVD yet"), for at most maxAgeMs. */
   cacheNotFound?: boolean;
+  /** Do not write the response to disk (one-off URLs such as time-window queries). */
+  noStore?: boolean;
 }
 
 /** GET with an on-disk cache, per-host pacing and retries. Throws on persistent failure. */
@@ -72,8 +74,10 @@ export async function cachedGet(url: string, opts: FetchOptions): Promise<Fetche
     if (!ok) throw new Error(`GET ${url} -> HTTP ${r.status}`);
     const body = await r.text();
     const meta: Meta = { url, finalUrl: r.url || url, status: r.status, fetchedAt: new Date().toISOString() };
-    await writeFile(bodyPath, body);
-    await writeFile(metaPath, JSON.stringify(meta));
+    if (!opts.noStore) {
+      await writeFile(bodyPath, body);
+      await writeFile(metaPath, JSON.stringify(meta));
+    }
     return { body, finalUrl: meta.finalUrl, status: r.status, fetchedAt: meta.fetchedAt, fromCache: false };
   }
 }

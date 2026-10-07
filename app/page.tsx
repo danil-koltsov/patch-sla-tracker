@@ -26,7 +26,7 @@ export default async function Home() {
     <>
       <h1>How long are Apple users exposed after a security fix exists?</h1>
       <p className="muted">
-        Three numbers for iPhone, iPad and Mac, for flaws first fixed since {WINDOW_START}. Rebuilt daily from Apple&apos;s advisories, the CISA
+        Three numbers for iPhone, iPad and Mac, for flaws first fixed since {WINDOW_START}. Checked every 6 hours against Apple&apos;s advisories, the CISA
         Known Exploited Vulnerabilities catalog, and NVD. Each number links to its evidence.
       </p>
 

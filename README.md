@@ -21,7 +21,7 @@ lib/metrics.ts       The three metrics: pure functions, the only place the rules
 lib/methodology.ts   Methodology version, window start, definitions shown on pages
 lib/data.ts          Loads the dataset at build time from Supabase (PostgREST) or a local JSON snapshot
 scripts/strip-js.ts  Post-build: removes all JavaScript from the static export
-scripts/ingest/      Daily ingestion: Apple index + advisories, CISA KEV, NVD → Supabase
+scripts/ingest/      Ingestion every 6 hours: Apple index + advisories, CISA KEV, NVD → Supabase
 supabase/migrations/ Schema, base-fact views, RLS
 tests/               Vitest: metric edge cases, parsers, schema + RLS (PGlite)
 content/corrections.ts  Public changelog of data corrections (shown on /methodology)
@@ -70,12 +70,25 @@ never reach Vercel or the browser. `tests/schema.test.ts` checks this against a 
 
 ## Ingestion
 
-`scripts/ingest/run.ts`, run daily by `.github/workflows/ingest.yml` (05:17 UTC) and on demand through *Run workflow*.
+`scripts/ingest/run.ts`, run every 6 hours by `.github/workflows/ingest.yml` (00:17, 06:17, 12:17, 18:17 UTC) and on demand
+through *Run workflow*.
 
-- Sources: Apple's security releases index (and its 2020–2023 archives), every iOS/iPadOS/macOS advisory since 2022, CISA KEV, and
-  NVD (all Apple-CNA CVEs in 5 paged requests, plus single lookups for CVEs from other CNAs).
-- Caching: responses are stored in `.cache/http`, which is restored between Actions runs. Recent advisories are re-fetched daily
-  because Apple adds entries late. Older ones are re-fetched monthly.
+What each run re-reads:
+
+| Source | Refresh |
+|---|---|
+| Apple index (current page) | every run |
+| Apple advisories released in the last 90 days | every run, because Apple adds CVEs to existing advisories later |
+| Apple advisories 90–400 days old | daily |
+| Older advisories, index archives | monthly / weekly |
+| CISA KEV | full reload every run |
+| NVD | records modified since the previous run (`lastModStartDate`), full Apple-CNA resync weekly |
+| NVD single lookups (CVEs from other CNAs still without a date) | retried daily |
+
+- Caching: responses live in `.cache/http`, NVD state in `.cache/nvd-state.json`. Both are restored between Actions runs. If the
+  cache is lost, the next run does a full NVD sync.
+- Change detection: each run hashes the dataset (without timestamps). If nothing changed, the tables are not rewritten and the site
+  is not rebuilt. The run is still recorded in `ingest_runs` with `changed = false`.
 - Rate limits: Apple is paced at 1 request per 1.5 s. NVD is paced at 1 request per 6.5 s without a key, or 0.7 s with `NVD_API_KEY`.
 - Idempotent: every row is upserted with the run id, and rows the sources no longer contain are deleted afterwards.
 - Safety: if any table would shrink by more than 10%, the run fails and nothing is deleted. Re-run with `force` only after checking why.
@@ -91,8 +104,8 @@ The site is a **static export** that ships **no JavaScript**. `next build` write
    directory to `out/`, clean URLs, and the security headers (including a CSP that allows no scripts).
 2. Build-time environment variables: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SITE_URL` (the public origin, used for canonical
    URLs). Do **not** add the service role key.
-3. Create a Deploy Hook (*Settings → Git → Deploy Hooks*) and store it as the `VERCEL_DEPLOY_HOOK_URL` GitHub secret. The daily
-   ingest workflow calls it after writing to Supabase; without it, new data never goes live, so the workflow fails loudly.
+3. Create a Deploy Hook (*Settings → Git → Deploy Hooks*) and store it as the `VERCEL_DEPLOY_HOOK_URL` GitHub secret. The ingest
+   workflow calls it whenever the data changed; without it, new data never goes live, so the workflow fails loudly.
 
 Pages exist for every CVE first fixed since 2023-01-01. Any other address returns the 404 page, which explains that scope.
 

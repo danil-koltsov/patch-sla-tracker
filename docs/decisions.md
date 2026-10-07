@@ -51,3 +51,13 @@ Small decisions made without asking. Larger trade-offs are raised as questions i
 4. **Metric 1 headline leads with the zero-day share** ("N of M exploited Apple flaws were attacked before a patch existed, per Apple"). The KEV lag is the secondary line.
 5. **Backport headline names one branch:** the oldest branch still maintained (last security release under 180 days old), excluding the newest branch, with its median and worst gap over exploited CVEs. The mixed "older branches" aggregate was removed.
 6. **Third-party label:** when the KEV `vendorProject` is not Apple (stored in `cves.kev_vendor_project`, migration 0002), the CVE is labelled "third-party component (<vendor>)". These CVEs stay in all metrics.
+
+## Ingestion cadence (owner, 2026-10-07)
+
+- Ingestion runs every 6 hours (`17 */6 * * *`), plus `workflow_dispatch`.
+- Each run re-reads: Apple's current index; every advisory released in the last 90 days (Apple adds CVEs to existing advisories later); the full KEV catalog; NVD records modified since the previous run.
+- Small decisions made while implementing this:
+  - NVD keeps a state file (`.cache/nvd-state.json`) with published dates. Incremental runs query `lastModStartDate` with 1 hour of overlap, which takes 1–2 requests. A full Apple-CNA resync runs weekly, or whenever the state is missing or older than 100 days (NVD allows at most 120 days per window).
+  - Advisories 90–400 days old are re-read daily and older ones monthly. Entries have been added up to 8 months after release, so a hard 90-day cutoff would miss some.
+  - Each run hashes the dataset content. When the data is unchanged, the run records `changed = false`, skips table writes, and does **not** trigger a Vercel rebuild. Rebuilding four times a day with nothing to show would only waste builds (principle 9).
+  - "Data last updated" is the timestamp of the ingestion run behind the published build, shown as `YYYY-MM-DD HH:MM UTC` with a machine-readable `datetime`. The footer also says that sources are checked every 6 hours and the site is rebuilt when they change.

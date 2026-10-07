@@ -1,5 +1,5 @@
 import type { KevEntry } from "./build.ts";
-import { cachedGet, HOUR } from "./http.ts";
+import { cachedGet } from "./http.ts";
 
 export const KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json";
 
@@ -24,6 +24,6 @@ export function parseKev(json: string): { catalogVersion: string | null; entries
 }
 
 export async function fetchKev() {
-  const res = await cachedGet(KEV_URL, { maxAgeMs: 20 * HOUR });
+  const res = await cachedGet(KEV_URL, { maxAgeMs: 0 }); // full reload every run
   return parseKev(res.body);
 }

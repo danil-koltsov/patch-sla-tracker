@@ -36,9 +36,12 @@ export class SupabaseWriter {
     await this.req("PATCH", `ingest_runs?id=eq.${id}`, { status, finished_at: new Date().toISOString(), ...fields }, "return=minimal");
   }
 
-  async lastCounts(): Promise<Record<string, number> | null> {
-    const rows = (await this.req("GET", "ingest_runs?status=eq.ok&order=finished_at.desc&limit=1&select=counts")) as { counts: Record<string, number> }[];
-    return rows[0]?.counts ?? null;
+  async lastRun(): Promise<{ counts: Record<string, number>; content_hash: string | null } | null> {
+    const rows = (await this.req("GET", "ingest_runs?status=eq.ok&order=finished_at.desc&limit=1&select=counts,content_hash")) as {
+      counts: Record<string, number>;
+      content_hash: string | null;
+    }[];
+    return rows[0] ?? null;
   }
 
   private async upsert(table: string, conflict: string, rows: object[]): Promise<void> {

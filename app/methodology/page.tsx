@@ -37,7 +37,10 @@ export default function Methodology() {
         </li>
       </ul>
       <p>
-        Ingestion runs once a day, caches every response and refuses to publish if a table would shrink by more than 10% (a sign that a source
+        Ingestion runs every 6 hours. Each run re-reads Apple&apos;s index, every advisory released in the last 90 days (Apple adds CVEs to
+        existing advisories weeks or months later), the full KEV catalog, and every NVD record modified since the previous run, with a full
+        NVD resync weekly. Older advisories are re-read daily up to 400 days, then monthly. The site is rebuilt only when the data changed.
+        Ingestion caches every response and refuses to publish if a table would shrink by more than 10% (a sign that a source
         changed format). SOFA (sofa.macadmins.io) was evaluated and not used: it lacks iOS 15–17 and iPadOS 17, and some older macOS release
         dates in it are wrong.
       </p>

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { beforeAll, describe, expect, it } from "vitest";
 
-const migrations = ["0001_init.sql", "0002_kev_vendor.sql"].map((f) => readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), "utf8"));
+const migrations = ["0001_init.sql", "0002_kev_vendor.sql", "0003_ingest_change_tracking.sql"].map((f) => readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), "utf8"));
 let db: PGlite;
 
 beforeAll(async () => {
