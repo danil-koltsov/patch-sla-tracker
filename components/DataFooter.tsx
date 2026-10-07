@@ -29,6 +29,9 @@ export async function DataFooter() {
           <a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog">CISA KEV</a>,{" "}
           <a href="https://nvd.nist.gov/">NVD</a>. All dates are UTC, written YYYY-MM-DD. No cookies, no tracking.
         </p>
+        <p>
+          A project by Danil Koltsov · <a href="https://koltsov.net">koltsov.net</a>
+        </p>
       </div>
     </footer>
   );
