@@ -1,5 +1,5 @@
 {
-"meta": {"updatedAt":"2026-10-08T23:19:13.215Z","kevCatalogVersion":"2026.10.08"},
+"meta": {"updatedAt":"2026-10-14T11:47:53.271Z","kevCatalogVersion":"2026.10.13"},
 "branches": [
 {"id":"ios-12","platform":"iOS","major":12,"name":"iOS 12"},
 {"id":"ios-13","platform":"iOS","major":13,"name":"iOS 13"},
@@ -11059,7 +11059,7 @@
 {"id":"CVE-2014-1745","nvdPublished":"2014-05-21","kevDateAdded":null,"kevDueDate":null,"kevVendorProject":null},
 {"id":"CVE-2015-4142","nvdPublished":null,"kevDateAdded":null,"kevDueDate":null,"kevVendorProject":null},
 {"id":"CVE-2016-1246","nvdPublished":"2016-10-05","kevDateAdded":null,"kevDueDate":null,"kevVendorProject":null},
-{"id":"CVE-2018-25032","nvdPublished":null,"kevDateAdded":null,"kevDueDate":null,"kevVendorProject":null},
+{"id":"CVE-2018-25032","nvdPublished":"2022-03-25","kevDateAdded":null,"kevDueDate":null,"kevVendorProject":null},
 {"id":"CVE-2020-19185","nvdPublished":"2023-08-22","kevDateAdded":null,"kevDueDate":null,"kevVendorProject":null},
 {"id":"CVE-2020-19186","nvdPublished":"2023-08-22","kevDateAdded":null,"kevDueDate":null,"kevVendorProject":null},
 {"id":"CVE-2020-19187","nvdPublished":"2023-08-22","kevDateAdded":null,"kevDueDate":null,"kevVendorProject":null},
