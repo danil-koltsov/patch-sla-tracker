@@ -1,5 +1,5 @@
 {
-"meta": {"updatedAt":"2026-10-20T04:45:14.169Z","kevCatalogVersion":"2026.10.16"},
+"meta": {"updatedAt":"2026-10-23T21:22:01.413Z","kevCatalogVersion":"2026.10.23"},
 "branches": [
 {"id":"ios-12","platform":"iOS","major":12,"name":"iOS 12"},
 {"id":"ios-13","platform":"iOS","major":13,"name":"iOS 13"},
@@ -531,7 +531,8 @@
 {"id":"ipados-27.0.1","branchId":"ipados-27","version":"27.0.1","suffix":null,"kind":"full","releaseDate":"2026-09-28","rereleaseDates":[],"name":"iOS 27.0.1 and iPadOS 27.0.1","advisoryUrl":null,"hasCveEntries":false},
 {"id":"macos-15.8.1","branchId":"macos-15","version":"15.8.1","suffix":null,"kind":"full","releaseDate":"2026-09-28","rereleaseDates":[],"name":"macOS Sequoia 15.8.1","advisoryUrl":"https://support.apple.com/en-us/149229","hasCveEntries":true},
 {"id":"macos-26.7.1","branchId":"macos-26","version":"26.7.1","suffix":null,"kind":"full","releaseDate":"2026-09-28","rereleaseDates":[],"name":"macOS Tahoe 26.7.1","advisoryUrl":"https://support.apple.com/en-us/149228","hasCveEntries":true},
-{"id":"macos-27.0.1","branchId":"macos-27","version":"27.0.1","suffix":null,"kind":"full","releaseDate":"2026-09-28","rereleaseDates":[],"name":"macOS Golden Gate 27.0.1","advisoryUrl":null,"hasCveEntries":false}
+{"id":"macos-27.0.1","branchId":"macos-27","version":"27.0.1","suffix":null,"kind":"full","releaseDate":"2026-09-28","rereleaseDates":[],"name":"macOS Golden Gate 27.0.1","advisoryUrl":null,"hasCveEntries":false},
+{"id":"ios-27.1","branchId":"ios-27","version":"27.1","suffix":null,"kind":"full","releaseDate":"2026-10-23","rereleaseDates":[],"name":"iOS 27.1","advisoryUrl":null,"hasCveEntries":false}
 ],
 "releaseCves": [
 {"releaseId":"ios-12.5.6","cveId":"CVE-2022-32893","entryAdded":null,"entryUpdated":null,"exploitedNote":true},
